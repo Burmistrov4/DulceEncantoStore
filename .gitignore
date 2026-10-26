@@ -7,6 +7,8 @@ next-env.d.ts
 # Base de datos local y fotos subidas desde el admin
 db/*.db
 db/*.db-journal
+db/*.db-wal
+db/*.db-shm
 public/uploads/*
 !public/uploads/.gitkeep
 

@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paleta artesanal: crema, caramelo, chocolate, miel, fresa */
+  --color-cream: #fbf3e4;
+  --color-cream-deep: #f5e8d3;
+  --color-choco: #2a1810;
+  --color-choco-mid: #4e2e1e;
+  --color-caramel: #c05621;
+  --color-caramel-deep: #9a4519;
+  --color-honey: #e9a23b;
+  --color-berry: #d9333f;
+  --color-leaf: #2f7a46;
+  --color-wa: #1eb457;
+  --color-wa-deep: #128c4b;
+
+  --font-display: var(--font-fraunces), Georgia, "Palatino Linotype", serif;
+  --font-body: var(--font-karla), "Segoe UI", "Trebuchet MS", sans-serif;
+
+  --shadow-card: 0 10px 30px -12px rgb(42 24 16 / 0.25);
+  --shadow-pop: 0 18px 45px -12px rgb(42 24 16 / 0.38);
+
+  --animate-pulse-dot: pulse-dot 1.6s ease-in-out infinite;
+  --animate-rise: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise-1: rise 0.6s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise-2: rise 0.6s 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise-3: rise 0.6s 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-marquee: marquee 30s linear infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-float-slow: float 11s ease-in-out infinite;
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.75); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  /* Marquee infinito: la pista contiene la lista duplicada 2x, -50% = loop seamless */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  /* Flotación suave para stickers y blobs (compone con rotate/translate de Tailwind v4) */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-cream);
+  /* textura sutil de granos, como papel de repostería */
+  background-image: radial-gradient(rgb(42 24 16 / 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+::selection {
+  background: var(--color-honey);
+  color: var(--color-choco);
+}
+
+/* Numeración de pasos y badges con tipografía display */
+.overline-caps {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+/* Inputs con estilo consistente en el admin y el drawer */
+.field {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(42 24 16 / 0.15);
+  background: #fff;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--color-choco);
+  outline: none;
+}
+.field:focus {
+  border-color: var(--color-caramel);
+  box-shadow: 0 0 0 3px rgb(192 86 33 / 0.15);
+}
+
+/* ── Rediseño landing: utilidades extra ────────────────────────────────────── */
+
+/* Guarda anti-scroll-horizontal: las manchas decorativas (blobs) y stickers
+   sobresalen de sus secciones a propósito; clip los contiene sin romper el
+   sticky del header (a diferencia de overflow:hidden en un ancestro). */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* Pista del marquee: se pausa al pasar el mouse por encima */
+.marquee-track {
+  will-change: transform;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Textura de puntos crema sobre fondos choco (sección del carrusel) */
+.bg-dots-cream {
+  background-image: radial-gradient(rgb(251 243 228 / 0.08) 1.5px, transparent 1.6px);
+  background-size: 24px 24px;
+}
+
+/* Accesibilidad: respeta la preferencia de menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-float,
+  .animate-float-slow,
+  .animate-rise,
+  .animate-rise-1,
+  .animate-rise-2,
+  .animate-rise-3,
+  .animate-pulse-dot {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ── FX de cursor: spotlight + tilt 3D (solo desktop, vía CursorFX) ────────── */
+
+/* Resplandor cálido que sigue el cursor dentro de las tarjetas */
+[data-spotlight] {
+  position: relative;
+}
+[data-spotlight]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, 50%),
+    rgb(233 162 59 / 0.16),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+[data-spotlight]:hover::after {
+  opacity: 1;
+}
+
+/* Inclinación 3D sutil al pasar el mouse (vars escritas por CursorFX).
+   Compone con las transiciones de Tailwind (translate/box-shadow) para no
+   romper el hover-lift de las tarjetas. */
+@media (hover: hover) and (pointer: fine) {
+  [data-tilt] {
+    transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition:
+      transform 0.3s ease,
+      translate 0.3s ease,
+      opacity 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+  [data-tilt][data-tilt-active] {
+    transition:
+      transform 0.06s linear,
+      translate 0.3s ease,
+      box-shadow 0.3s ease;
+    will-change: transform;
+  }
+}
+
+/* ── Aparición al hacer scroll (componente Reveal) ─────────────────────────── */
+
+.reveal {
+  opacity: 0;
+  translate: 0 22px;
+  transition:
+    opacity 0.7s ease,
+    translate 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.is-visible {
+  opacity: 1;
+  translate: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal.is-visible {
+    opacity: 1;
+    translate: none;
+    transition: none;
+  }
+}

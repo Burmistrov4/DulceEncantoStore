@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+*.tsbuildinfo
+next-env.d.ts
+
+# Datos de runtime: se crean en el servidor, no van en la imagen
+db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+public/uploads/*
+!public/uploads/.gitkeep
+
+.env.local
+.env*.local
+.git

@@ -36,8 +36,12 @@ export async function verifySessionToken(token: string | undefined | null): Prom
   return Number(exp) > Date.now();
 }
 
+// Las credenciales SOLO existen en el entorno (.env.local en local, variables del
+// servidor en producción). Cero valores por defecto en el código: sin variables
+// configuradas, nadie entra (y en producción eso es obligatorio).
 export function checkCredentials(user: string, password: string): boolean {
-  const expectedUser = process.env.ADMIN_USER || "admin";
-  const expectedPass = process.env.ADMIN_PASSWORD || "credenciales-en-env";
-  return user === expectedUser && password === expectedPass;
+  const envUser = process.env.ADMIN_USER;
+  const envPass = process.env.ADMIN_PASSWORD;
+  if (!envUser || !envPass) return false;
+  return user === envUser && password === envPass;
 }

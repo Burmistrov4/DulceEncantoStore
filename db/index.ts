@@ -46,9 +46,26 @@ CREATE TABLE IF NOT EXISTS reviews (
   status TEXT NOT NULL DEFAULT 'pending',
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  customer_name TEXT NOT NULL,
+  customer_phone TEXT NOT NULL,
+  items TEXT NOT NULL,
+  subtotal_usd INTEGER NOT NULL,
+  fee_usd INTEGER NOT NULL DEFAULT 0,
+  total_usd INTEGER NOT NULL,
+  zone_name TEXT NOT NULL DEFAULT '',
+  payment TEXT NOT NULL DEFAULT '',
+  rate REAL NOT NULL,
+  status TEXT NOT NULL DEFAULT 'nuevo',
+  created_at INTEGER NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(type);
 CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);
 CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
 `;
 
 export type DbStore = {

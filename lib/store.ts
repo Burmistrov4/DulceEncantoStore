@@ -2,9 +2,10 @@
 import { count, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDb } from "@/db";
-import { events, products, reviews, settings, type ProductRow } from "@/db/schema";
+import { events, orders, products, reviews, settings, type ProductRow } from "@/db/schema";
 import { slugify } from "./format";
 import { mergeSiteContent, type SiteContent } from "./site-content";
+import { ORDER_STATUSES, PAYMENT_METHODS, type OrderDTO, type OrderItemDTO, type OrderStatus } from "./types";
 import type { CategoryId, DeliveryZone, ProductDTO, ReviewDTO, StoreConfigDTO, Variant } from "./types";
 
 function toProduct(row: ProductRow): ProductDTO {
@@ -219,6 +220,172 @@ export function deleteReview(id: number): boolean {
   const { db } = getDb();
   const res = db.delete(reviews).where(eq(reviews.id, id)).run();
   return res.changes > 0;
+}
+
+// ---------- Pedidos (sin cuentas: código corto + teléfono del cliente) ----------
+
+const ORDER_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // sin I,L,O,0,1 (no confundir a mano)
+const ORDER_PENDING: OrderStatus[] = ["nuevo", "confirmado", "preparando"];
+
+export type OrderInput = {
+  customerName: string;
+  customerPhone: string; // solo dígitos con código país, ej: 584141234567
+  zoneId: string;
+  payment: string;
+  items: { productId: string; variant: string | null; qty: number }[];
+};
+
+function generateOrderCode(): string {
+  const { sqlite } = getDb();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let code = "DE-";
+    for (let i = 0; i < 5; i++) {
+      code += ORDER_ALPHABET[Math.floor(Math.random() * ORDER_ALPHABET.length)];
+    }
+    const exists = sqlite.prepare("SELECT 1 FROM orders WHERE code = ?").get(code);
+    if (!exists) return code;
+  }
+  throw new Error("No se pudo generar un código de pedido");
+}
+
+// Crea el pedido recalculando TODO en el servidor: precios desde la BD,
+// tarifa desde la zona guardada y tasa BCV actual. Nunca confía en el cliente.
+export function createOrder(input: OrderInput): OrderDTO {
+  if (input.items.length === 0 || input.items.length > 30) {
+    throw new Error("El pedido debe tener entre 1 y 30 líneas");
+  }
+
+  const config = getStoreConfig();
+  const zone: DeliveryZone = config.zones.find((z) => z.id === input.zoneId) ?? {
+    id: input.zoneId,
+    name: "Entrega a acordar",
+    feeUsd: 0,
+  };
+  const payment = (PAYMENT_METHODS as readonly string[]).includes(input.payment) ? input.payment : "Por definir";
+
+  const byId = new Map(getProducts({ onlyActive: true }).map((p) => [p.id, p]));
+  const items: OrderItemDTO[] = input.items.map((line) => {
+    const product = byId.get(line.productId);
+    if (!product) throw new Error("Un producto del pedido ya no existe: actualiza el menú");
+    if (!product.availableToday) throw new Error(`"${product.name}" se agotó hoy: actualiza el pedido`);
+    const qty = Math.max(1, Math.min(99, Math.round(line.qty)));
+    let unitUsd = product.priceUsd;
+    if (line.variant) {
+      const variant = product.variants.find((v) => v.label === line.variant);
+      if (!variant) throw new Error(`Tamaño inválido para "${product.name}"`);
+      unitUsd = variant.priceUsd;
+    }
+    return { name: product.name, variant: line.variant, qty, unitUsd };
+  });
+
+  const subtotalUsd = items.reduce((sum, i) => sum + i.unitUsd * i.qty, 0);
+  const feeUsd = zone.feeUsd;
+  const totalUsd = subtotalUsd + feeUsd;
+
+  const { db } = getDb();
+  const row = {
+    code: generateOrderCode(),
+    customerName: input.customerName.trim().slice(0, 60),
+    customerPhone: input.customerPhone.replace(/\D/g, "").slice(0, 15),
+    items: JSON.stringify(items),
+    subtotalUsd,
+    feeUsd,
+    totalUsd,
+    zoneName: zone.name,
+    payment,
+    rate: config.rate,
+    status: "nuevo",
+    createdAt: new Date(),
+  };
+  db.insert(orders).values(row).run();
+
+  return toOrderDTO(row);
+}
+
+function toOrderDTO(row: {
+  code: string;
+  customerName: string;
+  customerPhone: string;
+  items: string;
+  subtotalUsd: number;
+  feeUsd: number;
+  totalUsd: number;
+  zoneName: string;
+  payment: string;
+  rate: number;
+  status: string;
+  createdAt: Date;
+}): OrderDTO {
+  let items: OrderItemDTO[] = [];
+  try {
+    items = JSON.parse(row.items);
+  } catch {
+    items = [];
+  }
+  const status = (ORDER_STATUSES as readonly string[]).includes(row.status) ? (row.status as OrderStatus) : "nuevo";
+  return {
+    code: row.code,
+    customerName: row.customerName,
+    customerPhone: row.customerPhone,
+    items,
+    subtotalUsd: row.subtotalUsd,
+    feeUsd: row.feeUsd,
+    totalUsd: row.totalUsd,
+    zoneName: row.zoneName,
+    payment: row.payment,
+    rate: row.rate,
+    status,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function getOrderByCode(code: string): OrderDTO | null {
+  const { db } = getDb();
+  const row = db.select().from(orders).where(eq(orders.code, code.trim().toUpperCase())).limit(1).all()[0];
+  return row ? toOrderDTO(row) : null;
+}
+
+export function getOrdersByCodes(codes: string[]): OrderDTO[] {
+  const clean = [...new Set(codes.map((c) => c.trim().toUpperCase()).filter(Boolean))].slice(0, 50);
+  if (clean.length === 0) return [];
+  const { db } = getDb();
+  return db
+    .select()
+    .from(orders)
+    .where(inArray(orders.code, clean))
+    .orderBy(desc(orders.createdAt))
+    .all()
+    .map(toOrderDTO);
+}
+
+export function getAllOrders(limit = 200): (OrderDTO & { id: number })[] {
+  const { db } = getDb();
+  return db
+    .select()
+    .from(orders)
+    .orderBy(desc(orders.createdAt))
+    .limit(limit)
+    .all()
+    .map((r) => ({ ...toOrderDTO(r), id: r.id }));
+}
+
+export function setOrderStatus(id: number, status: OrderStatus): boolean {
+  const { db } = getDb();
+  const res = db.update(orders).set({ status }).where(eq(orders.id, id)).run();
+  return res.changes > 0;
+}
+
+export function getOrdersSummary(): { today: number; pending: number; totalUsdToday: number } {
+  const { db } = getDb();
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const all = db.select().from(orders).where(gte(orders.createdAt, startOfDay)).all();
+  const active = all.filter((o) => o.status !== "cancelado");
+  return {
+    today: all.length,
+    pending: all.filter((o) => ORDER_PENDING.includes(o.status as OrderStatus)).length,
+    totalUsdToday: active.reduce((sum, o) => sum + o.totalUsd, 0),
+  };
 }
 
 // ---------- Contenido editable de la landing ----------

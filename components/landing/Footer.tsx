@@ -49,9 +49,9 @@ export default function Footer({
           <ul className="mt-3 space-y-2 text-sm">
             <li><a href="#menu" className="hover:text-cream">Menú de hoy</a></li>
             <li><a href="#disponible-hoy" className="hover:text-cream">Fotos de lo disponible</a></li>
+            <li><Link href="/mis-pedidos" className="hover:text-cream">Mis pedidos (rastrear)</Link></li>
             <li><Link href="/bio" className="hover:text-cream">Bio link (para Instagram)</Link></li>
             <li><a href="#faq" className="hover:text-cream">Preguntas frecuentes</a></li>
-            <li><Link href="/admin" className="text-cream/40 hover:text-cream">Panel del dueño 🔒</Link></li>
           </ul>
         </div>
       </div>

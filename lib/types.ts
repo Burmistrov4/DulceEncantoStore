@@ -62,3 +62,24 @@ export type ReviewDTO = {
   text: string;
   stars: number;
 };
+
+// Pedidos sin cuentas: guardados al confirmar por WhatsApp, rastreables por código
+export const ORDER_STATUSES = ["nuevo", "confirmado", "preparando", "entregado", "cancelado"] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export type OrderItemDTO = { name: string; variant: string | null; qty: number; unitUsd: number };
+
+export type OrderDTO = {
+  code: string;
+  customerName: string;
+  customerPhone: string;
+  items: OrderItemDTO[];
+  subtotalUsd: number;
+  feeUsd: number;
+  totalUsd: number;
+  zoneName: string;
+  payment: string;
+  rate: number; // Bs/USD congelados al crear el pedido
+  status: OrderStatus;
+  createdAt: string; // ISO
+};

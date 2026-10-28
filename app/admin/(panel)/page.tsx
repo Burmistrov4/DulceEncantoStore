@@ -1,7 +1,7 @@
 import Link from "next/link";
 import AvailabilityQuickToggle from "@/components/admin/ProductToggle";
-import { dateFmt, rateFmt } from "@/lib/format";
-import { getMetricsSummary, getProducts, getStoreConfig, getTopProducts } from "@/lib/store";
+import { dateFmt, rateFmt, usd } from "@/lib/format";
+import { getMetricsSummary, getOrdersSummary, getProducts, getStoreConfig, getTopProducts } from "@/lib/store";
 import { CATEGORIES } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   const products = getProducts();
   const config = getStoreConfig();
   const top = getTopProducts(5);
+  const ordersSummary = getOrdersSummary();
 
   return (
     <div>
@@ -33,11 +34,30 @@ export default function AdminDashboard() {
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          emoji="🧾"
+          label="Pedidos hoy"
+          value={ordersSummary.today}
+          note={`${ordersSummary.pending} en curso · ${usd(ordersSummary.totalUsdToday)} vendidos hoy`}
+        />
         <MetricCard emoji="👀" label="Visitas a la tienda" value={totals.view ?? 0} note={`${last7.view ?? 0} en los últimos 7 días`} />
         <MetricCard emoji="🛒" label="Agregados al pedido" value={totals.add_to_cart ?? 0} note={`${last7.add_to_cart ?? 0} en los últimos 7 días`} />
         <MetricCard emoji="📲" label="Clics a WhatsApp" value={totals.whatsapp_click ?? 0} note={`${last7.whatsapp_click ?? 0} en los últimos 7 días`} />
-        <MetricCard emoji="💱" label="Tasa BCV" value={rateFmt(config.rate)} note={`Actualizada: ${dateFmt(config.rateUpdatedAt)} · Ajustes`} />
       </div>
+
+      {/* Acceso directo al pipeline de pedidos */}
+      {ordersSummary.pending > 0 && (
+        <Link
+          href="/admin/pedidos"
+          className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-choco px-5 py-4 text-cream shadow-card transition hover:bg-choco-mid"
+        >
+          <span className="text-sm font-bold">
+            🧾 Tienes <strong className="text-honey">{ordersSummary.pending}</strong>{" "}
+            {ordersSummary.pending === 1 ? "pedido en curso" : "pedidos en curso"} esperando tu confirmación
+          </span>
+          <span className="text-sm font-black text-honey">Ver pedidos →</span>
+        </Link>
+      )}
 
       {/* Stock diario: el interruptor que evita vender lo que ya no hay en nevera */}
       <section className="mt-10">

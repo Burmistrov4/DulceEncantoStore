@@ -11,8 +11,9 @@ export function buildOrderMessage(opts: {
   zone: DeliveryZone | null;
   payment: string;
   config: StoreConfigDTO;
+  code?: string | null;
 }): string {
-  const { items, zone, payment, config } = opts;
+  const { items, zone, payment, config, code } = opts;
   const subtotal = items.reduce((sum, i) => sum + i.unitUsd * i.qty, 0);
   const fee = zone?.feeUsd ?? 0;
   const total = subtotal + fee;
@@ -23,6 +24,7 @@ export function buildOrderMessage(opts: {
 
   return [
     `¡Hola, ${config.storeName}! 👋 Quiero hacer este pedido:`,
+    ...(code ? [``, `*Pedido:* ${code}`] : []),
     ``,
     ...lines,
     ``,

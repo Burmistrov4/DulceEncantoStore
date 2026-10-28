@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { bs, rateFmt, usd } from "@/lib/format";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/types";
@@ -8,10 +9,45 @@ import { buildOrderMessage, waLink } from "@/lib/whatsapp";
 import { track, useCart, useConfig } from "../StoreProvider";
 import WhatsAppIcon from "../WhatsAppIcon";
 
+const CUSTOMER_KEY = "dulces-customer";
+const MY_ORDERS_KEY = "dulces-my-orders";
+
+function saveOrderCode(code: string) {
+  try {
+    const raw = localStorage.getItem(MY_ORDERS_KEY);
+    const list = raw ? (JSON.parse(raw) as string[]) : [];
+    const next = [code, ...list.filter((c) => c !== code)].slice(0, 50);
+    localStorage.setItem(MY_ORDERS_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function CartDrawer() {
   const cart = useCart();
   const config = useConfig();
   const [sent, setSent] = useState(false);
+  const [savedCode, setSavedCode] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+
+  // Precargar datos del cliente de pedidos anteriores (sigue sin haber cuentas)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOMER_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { name?: string; phone?: string };
+        if (saved.name) setCustomerName(saved.name);
+        if (saved.phone) setCustomerPhone(saved.phone);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (!cart.open) return;
@@ -28,11 +64,54 @@ export default function CartDrawer() {
 
   if (!cart.open) return null;
 
-  const onConfirm = () => {
-    const msg = buildOrderMessage({ items: cart.items, zone: cart.zone, payment: cart.payment, config });
+  const onConfirm = async () => {
+    setError("");
+    const phoneDigits = customerPhone.replace(/\D/g, "");
+    if (customerName.trim().length < 2) return setError("Escribe tu nombre para el pedido.");
+    if (phoneDigits.length < 7) return setError("Escribe un teléfono válido para coordinar la entrega.");
+
+    setPlacing(true);
+    let code: string | null = null;
+    let failed = false;
+
+    // 1) Guardar el pedido en el panel (recalculado en el servidor)
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName,
+          customerPhone: phoneDigits,
+          zoneId: cart.zoneId,
+          payment: cart.payment,
+          items: cart.items.map((i) => ({ productId: i.productId, variant: i.variant, qty: i.qty })),
+          website: honeypot,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "No se pudo guardar el pedido");
+      code = json.code as string;
+      saveOrderCode(code);
+      try {
+        localStorage.setItem(CUSTOMER_KEY, JSON.stringify({ name: customerName.trim(), phone: phoneDigits }));
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      // La venta no se bloquea por un error de red: el chat manda igual
+      failed = true;
+    }
+
+    // 2) Abrir WhatsApp con el pedido (y el código si se guardó)
+    const msg = buildOrderMessage({ items: cart.items, zone: cart.zone, payment: cart.payment, config, code });
     track("whatsapp_click");
     window.open(waLink(config.whatsappNumber, msg), "_blank", "noopener");
+
+    setSavedCode(code);
+    setSaveFailed(failed);
     setSent(true);
+    setPlacing(false);
+    if (code) cart.clear();
   };
 
   return (
@@ -57,10 +136,30 @@ export default function CartDrawer() {
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
             <span className="grid size-16 place-items-center rounded-full bg-leaf/15 text-3xl">✅</span>
             <h3 className="font-display text-2xl font-black">¡Pedido en camino!</h3>
-            <p className="text-sm leading-relaxed text-choco/70">
-              Se abrió WhatsApp con tu pedido listo para enviar. Solo presiona <strong>enviar</strong> en
-              el chat y te confirmamos disponibilidad y tiempo de entrega.
-            </p>
+            {savedCode ? (
+              <>
+                <p className="text-sm leading-relaxed text-choco/70">
+                  Se abrió WhatsApp con tu pedido listo para <strong>enviar</strong>. Guarda tu código:
+                </p>
+                <p className="rounded-2xl bg-choco px-6 py-3 font-display text-2xl font-black tracking-widest text-honey">
+                  {savedCode}
+                </p>
+                <p className="text-xs text-choco/55">
+                  Con ese código puedes ver el estado en{" "}
+                  <Link href="/mis-pedidos" className="font-bold text-caramel underline">
+                    Mis pedidos
+                  </Link>{" "}
+                  (también lo guardamos en este navegador).
+                </p>
+              </>
+            ) : (
+              saveFailed && (
+                <p className="rounded-xl bg-honey/25 px-4 py-3 text-sm text-choco/80">
+                  Tu WhatsApp se abrió, pero no pudimos guardar el pedido en el panel (¿sin internet?).
+                  Envíalo igual por el chat: no perderás tu pedido. 🧡
+                </p>
+              )
+            )}
             <div className="mt-2 flex flex-col gap-2 self-stretch">
               <button
                 onClick={() => {
@@ -71,15 +170,14 @@ export default function CartDrawer() {
               >
                 Volver a la tienda
               </button>
-              <button
-                onClick={() => {
-                  cart.clear();
-                  setSent(false);
-                }}
-                className="rounded-full px-6 py-2 text-sm font-bold text-choco/50 hover:text-choco"
-              >
-                Vaciar pedido
-              </button>
+              {savedCode && (
+                <Link
+                  href="/mis-pedidos"
+                  className="rounded-full px-6 py-2 text-sm font-bold text-choco/60 hover:text-choco"
+                >
+                  Ver mis pedidos →
+                </Link>
+              )}
             </div>
           </div>
         ) : cart.items.length === 0 ? (
@@ -147,8 +245,44 @@ export default function CartDrawer() {
               ))}
             </div>
 
-            {/* Entrega y pago */}
+            {/* Entrega, pago y datos del cliente */}
             <div className="space-y-4 border-t border-choco/10 bg-cream-deep/50 px-5 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="ck-name" className="text-xs font-black uppercase tracking-wider text-choco/60">
+                    👤 Tu nombre
+                  </label>
+                  <input
+                    id="ck-name"
+                    className="field mt-1.5"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Ej: María"
+                    maxLength={60}
+                    autoComplete="name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ck-phone" className="text-xs font-black uppercase tracking-wider text-choco/60">
+                    📱 Tu teléfono
+                  </label>
+                  <input
+                    id="ck-phone"
+                    className="field mt-1.5"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="04141234567"
+                    inputMode="tel"
+                    maxLength={20}
+                    autoComplete="tel"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] leading-snug text-choco/50">
+                Sin registros ni claves: con tu nombre y teléfono coordinamos la entrega y tu pedido queda
+                guardado con un código para que lo rastrees.
+              </p>
+
               <div>
                 <label htmlFor="zone" className="text-xs font-black uppercase tracking-wider text-choco/60">
                   🚚 Método de entrega
@@ -186,6 +320,17 @@ export default function CartDrawer() {
                 </div>
               </div>
 
+              {/* Honeypot anti-spam invisible */}
+              <input
+                type="text"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                className="pointer-events-none absolute size-0 opacity-0"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+              />
+
               {/* Totales */}
               <div className="rounded-2xl bg-white p-4 text-sm shadow-card ring-1 ring-choco/5">
                 <div className="flex justify-between text-choco/70">
@@ -210,15 +355,22 @@ export default function CartDrawer() {
                 </p>
               </div>
 
+              {error && (
+                <p className="rounded-xl bg-berry/10 px-4 py-2.5 text-sm font-bold text-berry" role="alert">
+                  {error}
+                </p>
+              )}
+
               <button
                 onClick={onConfirm}
-                className="flex w-full items-center justify-center gap-3 rounded-full bg-wa px-6 py-4 font-display text-lg font-black text-white shadow-pop transition hover:-translate-y-0.5 hover:bg-wa-deep"
+                disabled={placing}
+                className="flex w-full items-center justify-center gap-3 rounded-full bg-wa px-6 py-4 font-display text-lg font-black text-white shadow-pop transition hover:-translate-y-0.5 hover:bg-wa-deep disabled:opacity-60"
               >
                 <WhatsAppIcon className="size-6" />
-                Confirmar pedido por WhatsApp 📲
+                {placing ? "Guardando tu pedido…" : "Confirmar pedido por WhatsApp 📲"}
               </button>
               <p className="pb-1 text-center text-[11px] text-choco/50">
-                Sin registros ni pagos en línea: confirmas todo por el chat. 🔒
+                Se guarda con tu código y se abre el chat listo para enviar. 🔒
               </p>
             </div>
           </>

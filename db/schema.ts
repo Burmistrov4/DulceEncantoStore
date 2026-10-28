@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // Productos del catálogo. priceUsd y variantes[].priceUsd están en CENTAVOS de dólar
 // para evitar errores de redondeo; Bs se calcula al vuelo con la tasa BCV.
@@ -48,6 +48,27 @@ export const reviews = sqliteTable("reviews", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });
 
+// Pedidos confirmados por WhatsApp. Se guardan al momento de abrir el chat,
+// sin cuentas: el cliente se identifica con nombre+teléfono y un código corto
+// (ej: DE-K7M3Q) que le sirve para rastrear su pedido en /mis-pedidos.
+// El servidor recalcula precios/total desde la BD al crear (nunca confía en el cliente).
+export const orders = sqliteTable("orders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  code: text("code").notNull().unique(),
+  customerName: text("customer_name").notNull(),
+  customerPhone: text("customer_phone").notNull(), // solo dígitos, para enlaces wa.me
+  items: text("items").notNull(), // JSON [{name, variant, qty, unitUsd}]
+  subtotalUsd: integer("subtotal_usd").notNull(),
+  feeUsd: integer("fee_usd").notNull().default(0),
+  totalUsd: integer("total_usd").notNull(),
+  zoneName: text("zone_name").notNull().default(""),
+  payment: text("payment").notNull().default(""),
+  rate: real("rate").notNull(), // tasa BCV congelada al momento del pedido
+  status: text("status").notNull().default("nuevo"), // nuevo|confirmado|preparando|entregado|cancelado
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+});
+
 export type ProductRow = typeof products.$inferSelect;
 export type ReviewRow = typeof reviews.$inferSelect;
+export type OrderRow = typeof orders.$inferSelect;
 export type EventRow = typeof events.$inferSelect;

@@ -12,7 +12,9 @@ import type { ReactNode } from "react";
 import type {
   CarouselSection,
   CatalogSection,
+  CustomOrdersSection,
   FaqSection,
+  FeaturesSection,
   FinalCtaContent,
   FooterContent,
   FxSection,
@@ -567,6 +569,135 @@ function StepsEditor({ value, onChange }: SectionProps<StepsSection>) {
   );
 }
 
+function FeaturesEditor({ value, onChange }: SectionProps<FeaturesSection>) {
+  const features = value.features;
+  return (
+    <div className="space-y-5">
+      <CheckField
+        label="Mostrar esta sección"
+        checked={value.enabled}
+        onChange={(enabled) => onChange({ enabled })}
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          label="Texto pequeño (eyebrow)"
+          value={value.eyebrow}
+          onChange={(eyebrow) => onChange({ eyebrow })}
+          placeholder="La diferencia se siente"
+        />
+        <TextField
+          label="Título de la sección"
+          value={value.title}
+          onChange={(title) => onChange({ title })}
+          placeholder="¿Por qué Dulce Encanto?"
+        />
+      </div>
+      <TextAreaField
+        label="Subtítulo"
+        value={value.subtitle}
+        onChange={(subtitle) => onChange({ subtitle })}
+        rows={2}
+        placeholder="Una frase que resuma tu manera de hacer postres…"
+      />
+
+      <EditableList
+        label="Diferenciales"
+        count={features.length}
+        max={8}
+        addLabel="+ Agregar diferencial"
+        emptyText="Agrega la primera razón para comprarte a ti."
+        onAdd={() => onChange({ features: [...features, { emoji: "✨", title: "Nuevo diferencial", text: "" }] })}
+      >
+        {features.map((feature, i) => (
+          <li key={i} className="rounded-2xl bg-cream-deep/50 p-3 ring-1 ring-choco/5">
+            <div className="flex items-center gap-2">
+              <div className="w-16 shrink-0">
+                <input
+                  className="field text-center"
+                  value={feature.emoji}
+                  onChange={(e) =>
+                    onChange({ features: patchItem(features, i, (f) => ({ ...f, emoji: e.target.value })) })
+                  }
+                  placeholder="🥛"
+                  aria-label={`Emoji del diferencial ${i + 1}`}
+                />
+              </div>
+              <input
+                className="field flex-1"
+                value={feature.title}
+                onChange={(e) =>
+                  onChange({ features: patchItem(features, i, (f) => ({ ...f, title: e.target.value })) })
+                }
+                placeholder="Título corto"
+                aria-label={`Título del diferencial ${i + 1}`}
+              />
+              <RowButtons
+                onUp={() => onChange({ features: moveItem(features, i, -1) })}
+                onDown={() => onChange({ features: moveItem(features, i, 1) })}
+                onRemove={() => onChange({ features: features.filter((_, j) => j !== i) })}
+                canUp={i > 0}
+                canDown={i < features.length - 1}
+                removeLabel={`Quitar diferencial ${i + 1}`}
+              />
+            </div>
+            <textarea
+              className="field mt-2 min-h-16"
+              rows={2}
+              value={feature.text}
+              onChange={(e) =>
+                onChange({ features: patchItem(features, i, (f) => ({ ...f, text: e.target.value })) })
+              }
+              placeholder="Explícalo en una frase…"
+              aria-label={`Texto del diferencial ${i + 1}`}
+            />
+          </li>
+        ))}
+      </EditableList>
+      <p className={HINT}>Consejo: 4 diferenciales concretos y creíbles venden más que 8 genéricos.</p>
+    </div>
+  );
+}
+
+function CustomOrdersEditor({ value, onChange }: SectionProps<CustomOrdersSection>) {
+  return (
+    <div className="space-y-5">
+      <CheckField
+        label="Mostrar banner de encargos"
+        checked={value.enabled}
+        onChange={(enabled) => onChange({ enabled })}
+        hint="Banner oscuro con botón directo a WhatsApp para cotizar pedidos grandes (cumpleaños, eventos)."
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          label="Texto pequeño (eyebrow)"
+          value={value.eyebrow}
+          onChange={(eyebrow) => onChange({ eyebrow })}
+          placeholder="Eventos y encargos"
+        />
+        <TextField
+          label="Texto del botón"
+          value={value.button}
+          onChange={(button) => onChange({ button })}
+          placeholder="Cotizar mi encargo"
+        />
+      </div>
+      <TextField
+        label="Título del banner"
+        value={value.title}
+        onChange={(title) => onChange({ title })}
+        placeholder="¿Cumpleaños, bautizo o reunión? Encárganos el dulce 🎉"
+      />
+      <TextAreaField
+        label="Texto"
+        value={value.text}
+        onChange={(text) => onChange({ text })}
+        rows={3}
+        placeholder="Explica anticipación, cantidades, personalización…"
+      />
+    </div>
+  );
+}
+
 function CarouselEditor({ value, onChange }: SectionProps<CarouselSection>) {
   return (
     <div className="space-y-4">
@@ -950,6 +1081,10 @@ export default function ContentEditor({ initial }: { initial: SiteContent }) {
   const setMarquee = (patch: Partial<MarqueeContent>) =>
     edit((c) => ({ ...c, marquee: { ...c.marquee, ...patch } }));
   const setSteps = (patch: Partial<StepsSection>) => edit((c) => ({ ...c, steps: { ...c.steps, ...patch } }));
+  const setFeatures = (patch: Partial<FeaturesSection>) =>
+    edit((c) => ({ ...c, features: { ...c.features, ...patch } }));
+  const setCustomOrders = (patch: Partial<CustomOrdersSection>) =>
+    edit((c) => ({ ...c, customOrders: { ...c.customOrders, ...patch } }));
   const setCarousel = (patch: Partial<CarouselSection>) =>
     edit((c) => ({ ...c, carousel: { ...c.carousel, ...patch } }));
   const setCatalog = (patch: Partial<CatalogSection>) =>
@@ -1003,6 +1138,10 @@ export default function ContentEditor({ initial }: { initial: SiteContent }) {
           <StepsEditor value={content.steps} onChange={setSteps} />
         </SectionCard>
 
+        <SectionCard emoji="🌟" title="Diferenciales («¿Por qué nosotros?»)" subtitle="Las razones que convencen antes de comprar">
+          <FeaturesEditor value={content.features} onChange={setFeatures} />
+        </SectionCard>
+
         <SectionCard emoji="🧊" title="Carrusel «Disponible hoy»" subtitle="Fotos reales de lo que salió hoy">
           <CarouselEditor value={content.carousel} onChange={setCarousel} />
         </SectionCard>
@@ -1013,6 +1152,10 @@ export default function ContentEditor({ initial }: { initial: SiteContent }) {
 
         <SectionCard emoji="🛒" title="Menú / catálogo" subtitle="Encabezado de la lista de productos">
           <CatalogEditor value={content.catalog} onChange={setCatalog} />
+        </SectionCard>
+
+        <SectionCard emoji="🎉" title="Encargos para eventos" subtitle="El banner que vende pedidos grandes">
+          <CustomOrdersEditor value={content.customOrders} onChange={setCustomOrders} />
         </SectionCard>
 
         <SectionCard emoji="💬" title="Testimonios" subtitle="La prueba social de tus clientes">

@@ -15,18 +15,19 @@ La base de datos SQLite (`db/dulces.db`) se crea y se siembra sola con 11 produc
 
 | Qué | Dónde | Valor por defecto |
 |-----|-------|-------------------|
-| Panel admin | `/admin` | usuario `admin` / contraseña `credenciales-en-env` |
-| Credenciales | `.env.local` (`ADMIN_USER`, `ADMIN_PASSWORD`, `AUTH_SECRET`) | cámbialas antes de publicar |
+| Panel admin | `/admin` | **Las credenciales se definen SOLO en `.env.local`** (`ADMIN_USER`, `ADMIN_PASSWORD`, `AUTH_SECRET`). El código no trae ninguna: sin variables configuradas, el login permanece cerrado |
 | Número de WhatsApp | `/admin/ajustes` (o `.env.local`) | `584141234567` — **cámbialo por el real** |
 | Tasa BCV | `/admin/ajustes` (botón automático o manual) | 43,80 de ejemplo |
 | Zonas de delivery y tarifas | `/admin/ajustes` | Flor Amarillo, La Isabelica, El Viñedo, San José, Centro |
 
 ## 🧭 Mapa de la aplicación
 
-- `/` — Landing rediseñada de alto impacto: barra de urgencia editable, hero cinematográfico, cinta marquee infinita, **carrusel "Disponible hoy"** con auto-avance y zoom, catálogo por pestañas, iluminación cálida que sigue al cursor y tilt 3D en las fotos, prueba social con **reseñas de clientes**, FAQ y checkout por WhatsApp.
+- `/` — Landing rediseñada de alto impacto: barra de urgencia editable, hero cinematográfico, cinta marquee infinita, **carrusel "Disponible hoy"** con auto-avance y zoom, diferenciales, catálogo por pestañas, encargos para eventos, iluminación cálida que sigue al cursor y tilt 3D en las fotos, prueba social con **reseñas de clientes**, FAQ y checkout por WhatsApp.
 - `/producto/[slug]` — Ficha de producto con zoom en foto, OG dinámico (al compartir el enlace se ve la foto y el precio) y pedido directo.
 - `/bio` — Bio link ultrarrápido para la descripción de Instagram (cero JS).
-- `/admin` — Dashboard con métricas e interruptor "Disponible hoy".
+- `/mis-pedidos` — El cliente rastrea sus pedidos por código (sin cuentas: guardados en su navegador).
+- `/admin` — Dashboard con métricas, pedidos en curso e interruptor "Disponible hoy".
+- `/admin/pedidos` — Pipeline de pedidos (nuevo → confirmado → preparando → entregado) con contacto directo por WhatsApp al cliente.
 - `/admin/productos` — CRUD completo con subida de fotos (drag & drop → recorte → `.webp` 1200×900), variantes (200g/500g/1L), stock, orden e interruptor **⭐ Destacado** (aparece en el carrusel).
 - `/admin/contenido` — **Editor visual de toda la landing**: textos de cada sección (urgencia, hero, marquee, pasos, carrusel, catálogo, testimonios, FAQ, CTA final, pie), listas editables, las **fotos del hero** con recorte automático, los **segundos de auto-avance del carrusel** (`0` = desactivado) y el acordeón **"✨ Efectos visuales"** (spotlight + tilt). Los cambios se reflejan al instante.
 - `/admin/ajustes` — Tasa BCV (manual o automática desde ve.dolarapi.com/pydolarve.org), WhatsApp, Instagram, zonas de delivery.

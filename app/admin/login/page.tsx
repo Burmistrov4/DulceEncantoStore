@@ -19,9 +19,7 @@ export default function AdminLoginPage() {
         </div>
         <LoginForm />
         <p className="mt-6 text-center text-[11px] leading-relaxed text-choco/45">
-          Acceso por defecto: <strong>admin / credenciales-en-env</strong>
-          <br />
-          (cámbialo en el archivo .env.local)
+          Acceso exclusivo de la administración.
         </p>
       </div>
     </main>

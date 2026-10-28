@@ -39,6 +39,26 @@ export type StepsSection = {
   steps: StepContent[];
 };
 
+// Diferenciales: "¿Por qué Dulce Encanto?" (grid de tarjetas con emoji)
+export type FeatureItem = { emoji: string; title: string; text: string };
+
+export type FeaturesSection = {
+  enabled: boolean;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  features: FeatureItem[];
+};
+
+// CTA de encargos especiales (eventos, pedidos grandes por WhatsApp)
+export type CustomOrdersSection = {
+  enabled: boolean;
+  eyebrow: string;
+  title: string;
+  text: string;
+  button: string;
+};
+
 export type CarouselSection = {
   enabled: boolean;
   eyebrow: string;
@@ -102,8 +122,10 @@ export type SiteContent = {
   hero: HeroContent;
   marquee: MarqueeContent;
   steps: StepsSection;
+  features: FeaturesSection;
   carousel: CarouselSection;
   catalog: CatalogSection;
+  customOrders: CustomOrdersSection;
   testimonials: TestimonialsSection;
   faq: FaqSection;
   finalCta: FinalCtaContent;
@@ -163,6 +185,35 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       },
     ],
   },
+  features: {
+    enabled: true,
+    eyebrow: "La diferencia se siente",
+    title: "¿Por qué Dulce Encanto?",
+    subtitle:
+      "No somos una fábrica de postres: somos un taller pequeño donde cada cosa se hace a mano, el mismo día que la comes.",
+    features: [
+      {
+        emoji: "🥛",
+        title: "Leche 100% fresca de la zona",
+        text: "Compramos leche fresca a productores de Carabobo. Nada de polvos ni sustitutos.",
+      },
+      {
+        emoji: "🧑‍🍳",
+        title: "Lotes pequeños cada mañana",
+        text: "Colamos y horneamos por encargo del día. Por eso a veces se agota: es fresco de verdad.",
+      },
+      {
+        emoji: "❄️",
+        title: "Sin conservantes ni colorantes",
+        text: "Los colores y sabores vienen de la fruta de verdad, no de un sobre.",
+      },
+      {
+        emoji: "🚗",
+        title: "Delivery o retiro el mismo día",
+        text: "Retira en el taller de Flor Amarillo o recíbelo en tu zona de Valencia el mismo día.",
+      },
+    ],
+  },
   carousel: {
     enabled: true,
     eyebrow: "Fotos reales, sin filtros",
@@ -177,6 +228,13 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     title: "Elige tu antojo 🤤",
     subtitle:
       "Precios en dólares y bolívares a la tasa BCV del día. Todo se prepara por lotes pequeños: si aparece “Agotado hoy”, vuelve mañana temprano. 😉",
+  },
+  customOrders: {
+    enabled: true,
+    eyebrow: "Eventos y encargos",
+    title: "¿Cumpleaños, bautizo o reunión? Encárganos el dulce 🎉",
+    text: "Preparamos encargos grandes de quesillo, yogur y postres con 24 a 48 horas de anticipación. Escríbenos por WhatsApp con la fecha y la cantidad, y te cotizamos en minutos.",
+    button: "Cotizar mi encargo",
   },
   testimonials: {
     eyebrow: "Valencianos felices",

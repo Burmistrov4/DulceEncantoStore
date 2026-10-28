@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const LINKS = [
   { href: "/admin", label: "Inicio", emoji: "📊" },
+  { href: "/admin/pedidos", label: "Pedidos", emoji: "🧾" },
   { href: "/admin/productos", label: "Productos", emoji: "🧁" },
   { href: "/admin/contenido", label: "Contenido", emoji: "🎨" },
   { href: "/admin/resenas", label: "Reseñas", emoji: "🗣️" },

@@ -3,8 +3,10 @@ import UrgencyBar from "@/components/landing/UrgencyBar";
 import Hero from "@/components/landing/Hero";
 import Marquee from "@/components/landing/Marquee";
 import Steps from "@/components/landing/Steps";
+import Features from "@/components/landing/Features";
 import MenuCarousel from "@/components/landing/MenuCarousel";
 import Catalog from "@/components/landing/Catalog";
+import CustomOrders from "@/components/landing/CustomOrders";
 import Testimonials from "@/components/landing/Testimonials";
 import Faq from "@/components/landing/Faq";
 import FinalCta from "@/components/landing/FinalCta";
@@ -136,7 +138,9 @@ export default async function Home() {
         <Reveal>
           <Steps content={content.steps} />
         </Reveal>
+        <Features content={content.features} />
         <Catalog products={products} rate={config.rate} content={content.catalog} />
+        <CustomOrders content={content.customOrders} config={config} />
         <Reveal>
           <Testimonials content={content.testimonials} reviews={uiReviews} />
         </Reveal>

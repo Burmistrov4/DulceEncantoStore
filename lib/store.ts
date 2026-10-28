@@ -1,7 +1,8 @@
-// Capa de datos del servidor (solo usar desde Server Components o Route Handlers)
+// Capa de datos del servidor (solo usar desde Server Components o Route Handlers).
+// Todas las operaciones son async: el driver libSQL habla HTTP con Turso en producción.
 import { count, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { getDb } from "@/db";
+import { affected, getDb } from "@/db";
 import { events, orders, products, reviews, settings, type ProductRow } from "@/db/schema";
 import { slugify } from "./format";
 import { mergeSiteContent, type SiteContent } from "./site-content";
@@ -36,20 +37,25 @@ function toProduct(row: ProductRow): ProductDTO {
 
 // ---------- Productos ----------
 
-export function getProducts(opts: { onlyActive?: boolean } = {}): ProductDTO[] {
-  const { db } = getDb();
-  const list = db
+export async function getProducts(opts: { onlyActive?: boolean } = {}): Promise<ProductDTO[]> {
+  const { db } = await getDb();
+  const list = (await db
     .select()
     .from(products)
     .orderBy(products.sortOrder, products.name)
-    .all()
-    .map(toProduct);
+    .all()).map(toProduct);
   return opts.onlyActive ? list.filter((p) => p.active) : list;
 }
 
-export function getProductBySlug(slug: string): ProductDTO | null {
-  const { db } = getDb();
-  const row = db.select().from(products).where(eq(products.slug, slug)).limit(1).all()[0];
+export async function getProductBySlug(slug: string): Promise<ProductDTO | null> {
+  const { db } = await getDb();
+  const row = (await db.select().from(products).where(eq(products.slug, slug)).limit(1).all())[0];
+  return row ? toProduct(row) : null;
+}
+
+export async function getProductById(id: string): Promise<ProductDTO | null> {
+  const { db } = await getDb();
+  const row = (await db.select().from(products).where(eq(products.id, id)).limit(1).all())[0];
   return row ? toProduct(row) : null;
 }
 
@@ -70,18 +76,20 @@ export type ProductInput = {
   sortOrder?: number;
 };
 
-export function createProduct(input: ProductInput): ProductDTO {
-  const { db } = getDb();
+export async function createProduct(input: ProductInput): Promise<ProductDTO> {
+  const { db } = await getDb();
   const id = nanoid(10);
+  if (input.name.trim().length < 2) throw new Error("El nombre del producto debe tener al menos 2 caracteres");
+  if (!Number.isFinite(input.priceUsd) || input.priceUsd < 0) throw new Error("Precio inválido");
   const slug = slugify(input.slug?.trim() || input.name) || `producto-${id}`;
   const row = {
     id,
-    slug: ensureUniqueSlug(slug, id),
+    slug: await ensureUniqueSlug(slug),
     name: input.name.trim(),
     description: input.description ?? "",
     category: input.category,
     priceUsd: Math.max(0, Math.round(input.priceUsd)),
-    variants: JSON.stringify(input.variants ?? []),
+    variants: JSON.stringify((input.variants ?? []).filter((v) => v.label?.trim() && v.priceUsd >= 0)),
     image: input.image ?? "",
     servings: input.servings ?? "",
     ingredients: input.ingredients ?? "",
@@ -92,24 +100,29 @@ export function createProduct(input: ProductInput): ProductDTO {
     sortOrder: input.sortOrder ?? 500,
     createdAt: new Date(),
   };
-  db.insert(products).values(row).run();
+  await db.insert(products).values(row).run();
   return toProduct(row as ProductRow);
 }
 
-function ensureUniqueSlug(slug: string, id: string): string {
-  const { db } = getDb();
-  const exists = db.select({ id: products.id }).from(products).where(eq(products.slug, slug)).limit(1).all()[0];
-  return exists ? `${slug}-${id.slice(0, 4)}` : slug;
+async function ensureUniqueSlug(slug: string): Promise<string> {
+  const { db } = await getDb();
+  let candidate = slug;
+  for (let i = 0; i < 5; i++) {
+    const exists = (await db.select({ id: products.id }).from(products).where(eq(products.slug, candidate)).limit(1).all())[0];
+    if (!exists) return candidate;
+    candidate = `${slug}-${nanoid(4).toLowerCase()}`;
+  }
+  return `${slug}-${Date.now().toString(36)}`;
 }
 
-export function updateProduct(id: string, patch: Partial<ProductInput>): ProductDTO | null {
-  const { db } = getDb();
+export async function updateProduct(id: string, patch: Partial<ProductInput>): Promise<ProductDTO | null> {
+  const { db } = await getDb();
   const set: Record<string, unknown> = {};
   if (patch.name !== undefined) set.name = patch.name.trim();
   if (patch.description !== undefined) set.description = patch.description;
   if (patch.category !== undefined) set.category = patch.category;
   if (patch.priceUsd !== undefined) set.priceUsd = Math.max(0, Math.round(patch.priceUsd));
-  if (patch.variants !== undefined) set.variants = JSON.stringify(patch.variants);
+  if (patch.variants !== undefined) set.variants = JSON.stringify(patch.variants.filter((v) => v.label?.trim()));
   if (patch.image !== undefined) set.image = patch.image;
   if (patch.servings !== undefined) set.servings = patch.servings;
   if (patch.ingredients !== undefined) set.ingredients = patch.ingredients;
@@ -119,25 +132,25 @@ export function updateProduct(id: string, patch: Partial<ProductInput>): Product
   if (patch.stock !== undefined) set.stock = patch.stock;
   if (patch.sortOrder !== undefined) set.sortOrder = patch.sortOrder;
   if (Object.keys(set).length === 0) {
-    const cur = db.select().from(products).where(eq(products.id, id)).limit(1).all()[0];
+    const cur = (await db.select().from(products).where(eq(products.id, id)).limit(1).all())[0];
     return cur ? toProduct(cur) : null;
   }
-  db.update(products).set(set).where(eq(products.id, id)).run();
-  const row = db.select().from(products).where(eq(products.id, id)).limit(1).all()[0];
+  await db.update(products).set(set).where(eq(products.id, id)).run();
+  const row = (await db.select().from(products).where(eq(products.id, id)).limit(1).all())[0];
   return row ? toProduct(row) : null;
 }
 
-export function deleteProduct(id: string): boolean {
-  const { db } = getDb();
-  const res = db.delete(products).where(eq(products.id, id)).run();
-  return res.changes > 0;
+export async function deleteProduct(id: string): Promise<boolean> {
+  const { db } = await getDb();
+  const res = await db.delete(products).where(eq(products.id, id)).run();
+  return affected(res) > 0;
 }
 
 // ---------- Configuración ----------
 
-export function getStoreConfig(): StoreConfigDTO {
-  const { db } = getDb();
-  const rows = db.select().from(settings).all();
+export async function getStoreConfig(): Promise<StoreConfigDTO> {
+  const { db } = await getDb();
+  const rows = await db.select().from(settings).all();
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   let zones: DeliveryZone[] = [];
   try {
@@ -146,9 +159,11 @@ export function getStoreConfig(): StoreConfigDTO {
     zones = [];
   }
   const rate = Number(map.bcv_rate);
+  const envRate = Number(process.env.BCV_RATE_FALLBACK);
   return {
     storeName: map.store_name || process.env.NEXT_PUBLIC_STORE_NAME || "Dulce Encanto",
-    rate: rate > 0 ? rate : 1,
+    // Tasa válida de BD; si falta, un valor del entorno; jamás 0 (rompería los Bs)
+    rate: rate > 0 ? rate : envRate > 0 ? envRate : 1,
     rateUpdatedAt: map.bcv_rate_updated_at || new Date().toISOString(),
     whatsappNumber: map.whatsapp_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "584141234567",
     instagramUrl: map.instagram_url || process.env.NEXT_PUBLIC_INSTAGRAM_URL || "https://instagram.com/",
@@ -156,9 +171,10 @@ export function getStoreConfig(): StoreConfigDTO {
   };
 }
 
-export function setSetting(key: string, value: string): void {
-  const { db } = getDb();
-  db.insert(settings)
+export async function setSetting(key: string, value: string): Promise<void> {
+  const { db } = await getDb();
+  await db
+    .insert(settings)
     .values({ key, value })
     .onConflictDoUpdate({ target: settings.key, set: { value } })
     .run();
@@ -168,9 +184,10 @@ export function setSetting(key: string, value: string): void {
 
 export type ReviewInput = { name: string; zone: string; text: string; stars: number };
 
-export function createReview(input: ReviewInput): void {
-  const { db } = getDb();
-  db.insert(reviews)
+export async function createReview(input: ReviewInput): Promise<void> {
+  const { db } = await getDb();
+  await db
+    .insert(reviews)
     .values({
       name: input.name.trim().slice(0, 60),
       zone: input.zone.trim().slice(0, 60),
@@ -187,9 +204,9 @@ function toReviewDTO(row: { id: number; name: string; zone: string; text: string
 }
 
 // Aprobadas, para la landing (las más recientes primero)
-export function getApprovedReviews(limit = 6): ReviewDTO[] {
-  const { db } = getDb();
-  const rows = db
+export async function getApprovedReviews(limit = 6): Promise<ReviewDTO[]> {
+  const { db } = await getDb();
+  const rows = await db
     .select()
     .from(reviews)
     .where(eq(reviews.status, "approved"))
@@ -200,26 +217,25 @@ export function getApprovedReviews(limit = 6): ReviewDTO[] {
 }
 
 // Todas, para el panel (pendientes primero, luego aprobadas/rechazadas)
-export function getAllReviews() {
-  const { db } = getDb();
-  return db
+export async function getAllReviews() {
+  const { db } = await getDb();
+  return (await db
     .select()
     .from(reviews)
     .orderBy(desc(reviews.createdAt))
-    .all()
-    .map((r) => ({ ...toReviewDTO(r), status: r.status }));
+    .all()).map((r) => ({ ...toReviewDTO(r), status: r.status }));
 }
 
-export function setReviewStatus(id: number, status: "pending" | "approved" | "rejected"): boolean {
-  const { db } = getDb();
-  const res = db.update(reviews).set({ status }).where(eq(reviews.id, id)).run();
-  return res.changes > 0;
+export async function setReviewStatus(id: number, status: "pending" | "approved" | "rejected"): Promise<boolean> {
+  const { db } = await getDb();
+  const res = await db.update(reviews).set({ status }).where(eq(reviews.id, id)).run();
+  return affected(res) > 0;
 }
 
-export function deleteReview(id: number): boolean {
-  const { db } = getDb();
-  const res = db.delete(reviews).where(eq(reviews.id, id)).run();
-  return res.changes > 0;
+export async function deleteReview(id: number): Promise<boolean> {
+  const { db } = await getDb();
+  const res = await db.delete(reviews).where(eq(reviews.id, id)).run();
+  return affected(res) > 0;
 }
 
 // ---------- Pedidos (sin cuentas: código corto + teléfono del cliente) ----------
@@ -235,58 +251,73 @@ export type OrderInput = {
   items: { productId: string; variant: string | null; qty: number }[];
 };
 
-function generateOrderCode(): string {
-  const { sqlite } = getDb();
+async function generateOrderCode(): Promise<string> {
+  const { db } = await getDb();
   for (let attempt = 0; attempt < 5; attempt++) {
     let code = "DE-";
     for (let i = 0; i < 5; i++) {
       code += ORDER_ALPHABET[Math.floor(Math.random() * ORDER_ALPHABET.length)];
     }
-    const exists = sqlite.prepare("SELECT 1 FROM orders WHERE code = ?").get(code);
+    const exists = (await db.select({ id: orders.id }).from(orders).where(eq(orders.code, code)).limit(1).all())[0];
     if (!exists) return code;
   }
   throw new Error("No se pudo generar un código de pedido");
 }
 
 // Crea el pedido recalculando TODO en el servidor: precios desde la BD,
-// tarifa desde la zona guardada y tasa BCV actual. Nunca confía en el cliente.
-export function createOrder(input: OrderInput): OrderDTO {
+// tarifa desde la zona guardada y tasa Euro BCV actual. Nunca confía en el cliente.
+export async function createOrder(input: OrderInput): Promise<OrderDTO> {
   if (input.items.length === 0 || input.items.length > 30) {
     throw new Error("El pedido debe tener entre 1 y 30 líneas");
   }
+  const name = input.customerName.trim();
+  if (name.length < 2 || name.length > 60) throw new Error("Escribe tu nombre (2 a 60 caracteres)");
+  const phone = input.customerPhone.replace(/\D/g, "");
+  if (phone.length < 7 || phone.length > 15) throw new Error("Escribe un teléfono válido");
 
-  const config = getStoreConfig();
-  const zone: DeliveryZone = config.zones.find((z) => z.id === input.zoneId) ?? {
-    id: input.zoneId,
-    name: "Entrega a acordar",
-    feeUsd: 0,
-  };
+  const config = await getStoreConfig();
+  const zone: DeliveryZone | undefined = config.zones.find((z) => z.id === input.zoneId);
+  if (!zone) throw new Error("Elige una zona de entrega válida");
   const payment = (PAYMENT_METHODS as readonly string[]).includes(input.payment) ? input.payment : "Por definir";
 
-  const byId = new Map(getProducts({ onlyActive: true }).map((p) => [p.id, p]));
-  const items: OrderItemDTO[] = input.items.map((line) => {
+  // Deduplica líneas por producto+variante sumando cantidades
+  const merged = new Map<string, { productId: string; variant: string | null; qty: number }>();
+  for (const line of input.items) {
+    const key = `${line.productId}|${line.variant ?? ""}`;
+    const prev = merged.get(key);
+    if (prev) prev.qty += Math.max(0, Math.round(line.qty));
+    else merged.set(key, { productId: line.productId, variant: line.variant, qty: Math.max(0, Math.round(line.qty)) });
+  }
+
+  const byId = new Map((await getProducts({ onlyActive: true })).map((p) => [p.id, p]));
+  const items: OrderItemDTO[] = [];
+  for (const line of merged.values()) {
     const product = byId.get(line.productId);
     if (!product) throw new Error("Un producto del pedido ya no existe: actualiza el menú");
     if (!product.availableToday) throw new Error(`"${product.name}" se agotó hoy: actualiza el pedido`);
-    const qty = Math.max(1, Math.min(99, Math.round(line.qty)));
+    const qty = Math.max(1, Math.min(99, line.qty));
     let unitUsd = product.priceUsd;
     if (line.variant) {
       const variant = product.variants.find((v) => v.label === line.variant);
       if (!variant) throw new Error(`Tamaño inválido para "${product.name}"`);
       unitUsd = variant.priceUsd;
     }
-    return { name: product.name, variant: line.variant, qty, unitUsd };
-  });
+    // Sin stock definido (null) no se limita; con stock, nunca vender más de lo disponible
+    if (product.stock !== null && qty > product.stock) {
+      throw new Error(`Solo quedan ${product.stock} de "${product.name}" hoy`);
+    }
+    items.push({ name: product.name, variant: line.variant, qty, unitUsd });
+  }
 
   const subtotalUsd = items.reduce((sum, i) => sum + i.unitUsd * i.qty, 0);
   const feeUsd = zone.feeUsd;
   const totalUsd = subtotalUsd + feeUsd;
 
-  const { db } = getDb();
+  const { db } = await getDb();
   const row = {
-    code: generateOrderCode(),
-    customerName: input.customerName.trim().slice(0, 60),
-    customerPhone: input.customerPhone.replace(/\D/g, "").slice(0, 15),
+    code: await generateOrderCode(),
+    customerName: name.slice(0, 60),
+    customerPhone: phone.slice(0, 15),
     items: JSON.stringify(items),
     subtotalUsd,
     feeUsd,
@@ -297,7 +328,7 @@ export function createOrder(input: OrderInput): OrderDTO {
     status: "nuevo",
     createdAt: new Date(),
   };
-  db.insert(orders).values(row).run();
+  await db.insert(orders).values(row).run();
 
   return toOrderDTO(row);
 }
@@ -339,47 +370,45 @@ function toOrderDTO(row: {
   };
 }
 
-export function getOrderByCode(code: string): OrderDTO | null {
-  const { db } = getDb();
-  const row = db.select().from(orders).where(eq(orders.code, code.trim().toUpperCase())).limit(1).all()[0];
+export async function getOrderByCode(code: string): Promise<OrderDTO | null> {
+  const { db } = await getDb();
+  const row = (await db.select().from(orders).where(eq(orders.code, code.trim().toUpperCase())).limit(1).all())[0];
   return row ? toOrderDTO(row) : null;
 }
 
-export function getOrdersByCodes(codes: string[]): OrderDTO[] {
+export async function getOrdersByCodes(codes: string[]): Promise<OrderDTO[]> {
   const clean = [...new Set(codes.map((c) => c.trim().toUpperCase()).filter(Boolean))].slice(0, 50);
   if (clean.length === 0) return [];
-  const { db } = getDb();
-  return db
+  const { db } = await getDb();
+  return (await db
     .select()
     .from(orders)
     .where(inArray(orders.code, clean))
     .orderBy(desc(orders.createdAt))
-    .all()
-    .map(toOrderDTO);
+    .all()).map(toOrderDTO);
 }
 
-export function getAllOrders(limit = 200): (OrderDTO & { id: number })[] {
-  const { db } = getDb();
-  return db
+export async function getAllOrders(limit = 200): Promise<(OrderDTO & { id: number })[]> {
+  const { db } = await getDb();
+  return (await db
     .select()
     .from(orders)
     .orderBy(desc(orders.createdAt))
     .limit(limit)
-    .all()
-    .map((r) => ({ ...toOrderDTO(r), id: r.id }));
+    .all()).map((r) => ({ ...toOrderDTO(r), id: r.id }));
 }
 
-export function setOrderStatus(id: number, status: OrderStatus): boolean {
-  const { db } = getDb();
-  const res = db.update(orders).set({ status }).where(eq(orders.id, id)).run();
-  return res.changes > 0;
+export async function setOrderStatus(id: number, status: OrderStatus): Promise<boolean> {
+  const { db } = await getDb();
+  const res = await db.update(orders).set({ status }).where(eq(orders.id, id)).run();
+  return affected(res) > 0;
 }
 
-export function getOrdersSummary(): { today: number; pending: number; totalUsdToday: number } {
-  const { db } = getDb();
+export async function getOrdersSummary(): Promise<{ today: number; pending: number; totalUsdToday: number }> {
+  const { db } = await getDb();
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
-  const all = db.select().from(orders).where(gte(orders.createdAt, startOfDay)).all();
+  const all = await db.select().from(orders).where(gte(orders.createdAt, startOfDay)).all();
   const active = all.filter((o) => o.status !== "cancelado");
   return {
     today: all.length,
@@ -390,9 +419,9 @@ export function getOrdersSummary(): { today: number; pending: number; totalUsdTo
 
 // ---------- Contenido editable de la landing ----------
 
-export function getSiteContent(): SiteContent {
-  const { db } = getDb();
-  const row = db.select().from(settings).where(eq(settings.key, "site_content")).limit(1).all()[0];
+export async function getSiteContent(): Promise<SiteContent> {
+  const { db } = await getDb();
+  const row = (await db.select().from(settings).where(eq(settings.key, "site_content")).limit(1).all())[0];
   let stored: unknown = {};
   if (row) {
     try {
@@ -405,35 +434,35 @@ export function getSiteContent(): SiteContent {
 }
 
 // Reemplaza las secciones (claves de primer nivel) que vengan en el patch.
-export function saveSiteContent(patch: Partial<SiteContent>): SiteContent {
-  const current = getSiteContent();
+export async function saveSiteContent(patch: Partial<SiteContent>): Promise<SiteContent> {
+  const current = await getSiteContent();
   const next: Record<string, unknown> = { ...current };
   for (const [key, value] of Object.entries(patch)) {
     if (key in current && value !== undefined) next[key] = value;
   }
-  setSetting("site_content", JSON.stringify(next));
+  await setSetting("site_content", JSON.stringify(next));
   return next as unknown as SiteContent;
 }
 
 // ---------- Eventos del embudo (leads y métricas) ----------
 
-export function trackEvent(type: string, productId?: string | null, meta?: string): void {
+export async function trackEvent(type: string, productId?: string | null, meta?: string): Promise<void> {
   try {
-    const { db } = getDb();
-    db.insert(events).values({ type, productId: productId ?? null, meta: meta ?? null, createdAt: new Date() }).run();
+    const { db } = await getDb();
+    await db.insert(events).values({ type, productId: productId ?? null, meta: meta ?? null, createdAt: new Date() }).run();
   } catch {
     // el tracking nunca debe romper la experiencia de compra
   }
 }
 
-export function getMetricsSummary() {
-  const { db } = getDb();
-  const byType = db.select({ type: events.type, c: count() }).from(events).groupBy(events.type).all();
+export async function getMetricsSummary() {
+  const { db } = await getDb();
+  const byType = await db.select({ type: events.type, c: count() }).from(events).groupBy(events.type).all();
   const totals: Record<string, number> = {};
   for (const r of byType) totals[r.type] = r.c;
 
   const weekAgo = new Date(Date.now() - 7 * 86400000);
-  const byType7 = db
+  const byType7 = await db
     .select({ type: events.type, c: count() })
     .from(events)
     .where(gte(events.createdAt, weekAgo))
@@ -447,12 +476,12 @@ export function getMetricsSummary() {
 
 export type DailyMetric = { day: string; type: string; c: number };
 
-export function getDailyMetrics(days = 14): DailyMetric[] {
-  const { db } = getDb();
+export async function getDailyMetrics(days = 14): Promise<DailyMetric[]> {
+  const { db } = await getDb();
   const since = new Date(Date.now() - (days - 1) * 86400000);
   since.setHours(0, 0, 0, 0);
   const dayExpr = sql<string>`strftime('%Y-%m-%d', ${events.createdAt}, 'unixepoch')`;
-  return db
+  return await db
     .select({ day: dayExpr, type: events.type, c: count() })
     .from(events)
     .where(gte(events.createdAt, since))
@@ -460,9 +489,9 @@ export function getDailyMetrics(days = 14): DailyMetric[] {
     .all();
 }
 
-export function getTopProducts(limit = 8) {
-  const { db } = getDb();
-  const rows = db
+export async function getTopProducts(limit = 8) {
+  const { db } = await getDb();
+  const rows = await db
     .select({ productId: events.productId, c: count() })
     .from(events)
     .where(isNotNull(events.productId))
@@ -472,7 +501,7 @@ export function getTopProducts(limit = 8) {
     .all();
   const ids = rows.map((r) => r.productId).filter((x): x is string => !!x);
   if (ids.length === 0) return [];
-  const prods = db.select().from(products).where(inArray(products.id, ids)).all();
+  const prods = await db.select().from(products).where(inArray(products.id, ids)).all();
   const byId = new Map(prods.map((p) => [p.id, toProduct(p)]));
   return rows
     .filter((r): r is { productId: string; c: number } => !!r.productId && byId.has(r.productId))

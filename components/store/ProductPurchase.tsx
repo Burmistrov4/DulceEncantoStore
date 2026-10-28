@@ -65,7 +65,7 @@ export default function ProductPurchase({ product }: { product: ProductDTO }) {
         <span className="pb-1 text-sm font-bold text-choco/55">{bs(price, config.rate)}</span>
       </div>
       <p className="mt-1 text-[11px] text-choco/50">
-        Tasa BCV {new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2 }).format(config.rate)} Bs/$
+        Tasa Euro BCV {new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2 }).format(config.rate)} Bs/$
       </p>
 
       <div className="mt-5 flex flex-col gap-3">

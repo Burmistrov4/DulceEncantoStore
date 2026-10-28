@@ -4,8 +4,8 @@ import { getStoreConfig } from "@/lib/store";
 // El panel siempre muestra datos frescos (nunca cachear HTML del admin)
 export const dynamic = "force-dynamic";
 
-export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
-  const config = getStoreConfig();
+export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
+  const config = await getStoreConfig();
   return (
     <div className="min-h-dvh bg-cream">
       <AdminNav storeName={config.storeName} />

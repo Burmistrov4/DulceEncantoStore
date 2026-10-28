@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
 import { getProducts } from "@/lib/store";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const products = getProducts({ onlyActive: true });
+  const products = await getProducts({ onlyActive: true });
 
   return [
     { url: site, changeFrequency: "daily", priority: 1 },

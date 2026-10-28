@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
     const productId = typeof body?.productId === "string" && body.productId ? body.productId : null;
-    trackEvent(type, productId);
+    await trackEvent(type, productId);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });

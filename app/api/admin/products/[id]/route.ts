@@ -30,7 +30,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   else if (Number.isFinite(Number(body.stock))) patch.stock = Math.max(0, Math.round(Number(body.stock)));
   if (body.sortOrder !== undefined && Number.isFinite(Number(body.sortOrder))) patch.sortOrder = Math.round(Number(body.sortOrder));
 
-  const product = updateProduct(id, patch);
+  const product = await updateProduct(id, patch);
   if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
   revalidatePath("/", "layout");
   return NextResponse.json({ product });
@@ -38,7 +38,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
 export async function DELETE(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
-  const ok = deleteProduct(id);
+  const ok = await deleteProduct(id);
   if (!ok) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
   revalidatePath("/", "layout");
   return NextResponse.json({ ok: true });

@@ -1,8 +1,62 @@
 # 🚀 Guía de despliegue — Dulce Encanto
 
-Del código en esta carpeta a la tienda en línea con tu dominio. Ordenada de la opción más recomendada a la más avanzada.
+Del código en esta carpeta a la tienda en línea. **Opción recomendada: Vercel + Turso** (gratis para empezar).
 
-> **Antes de empezar:** el proyecto usa **SQLite en disco** (`db/dulces.db`) y guarda las fotos subidas desde el admin en `public/uploads/`. Por eso **cualquier destino de producción necesita disco persistente**. Esta es LA restricción que decide todo lo demás.
+> **Arquitectura actual:** la base de datos es **libSQL** (el sucesor de SQLite). En desarrollo usa el archivo local `db/dulces.db`; en producción se conecta a una base **Turso** remota con dos variables de entorno. Ya no se necesita disco persistente en el host.
+
+---
+
+## Opción 0 — Vercel + Turso (recomendada)
+
+### 1) Crea tu base de datos en Turso (gratis)
+
+1. Instala el CLI o regístrate en [turso.tech](https://turso.tech) con GitHub:
+   ```bash
+   # con el CLI (opcional, puedes hacerlo todo desde el dashboard)
+   curl -sSfL https://get.tur.so/install.sh | bash
+   turso auth signup
+   turso db create dulces        # crea la base
+   turso db show dulces --url    # → TURSO_DATABASE_URL
+   turso db tokens create dulces # → TURSO_AUTH_TOKEN
+   ```
+2. Copia los dos valores; los usarás en Vercel.
+
+### 2) Sube el repo a GitHub y conéctalo a Vercel
+
+1. `git push` a un repo privado de GitHub (ver Paso 0 abajo).
+2. En [vercel.com/new](https://vercel.com/new) importa el repo (framework detectado: Next.js, sin ajustes de build).
+
+### 3) Variables de entorno en Vercel (Settings → Environment Variables)
+
+| Variable | Valor |
+|---|---|
+| `TURSO_DATABASE_URL` | `libsql://dulces-...turso.io` |
+| `TURSO_AUTH_TOKEN` | el token de Turso |
+| `ADMIN_USER` / `ADMIN_PASSWORD` | credenciales del panel `/admin` |
+| `AUTH_SECRET` | cadena larga aleatoria (`openssl rand -hex 32`) |
+| `NEXT_PUBLIC_SITE_URL` | `https://tu-dominio.vercel.app` (o tu dominio) |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | `58...` |
+
+> Al primer arranque, la app crea las tablas solas (DDL idempotente) y siembra productos de ejemplo si la base está vacía. Para partir con tu data local, exporta con `turso db shell dulces < dump.sql` o usa los CRUDs del admin.
+
+### 4) Tasa Euro BCV automática
+
+- Botón **“Actualizar tasa”** en `/admin/ajustes` (fuentes: ve.dolarapi.com → Euro oficial BCV, con respaldo pydolarve).
+- Automático diario: crea un cron externo (ej. [cron-job.org](https://cron-job.org) o GitHub Action) que haga `POST` diario ejecutando `npm run rate:update` con las variables de Turso configuradas, o llama a una ruta interna autenticada.
+
+### Notas
+
+### 5) Fotos del admin en Vercel Blob (ya integrado)
+
+Las fotos que subas desde el admin se guardan en **Vercel Blob** (almacenamiento permanente). Activación:
+
+1. En Vercel: pestaña **Storage → Create Database → Blob** y conéctalo al proyecto (Vercel inyecta `BLOB_READ_WRITE_TOKEN` automáticamente).
+2. Redespliega. Desde ese momento, `/api/admin/upload` sube a Blob y guarda la URL pública en la BD.
+
+Sin token (desarrollo local), las fotos siguen guardándose en `public/uploads/` como siempre — cero cambios en tu flujo.
+
+> Las fotos por defecto (`public/products/`) se despliegan con el código y no requieren Blob.
+- **ISR**: la landing se revalida cada 15 s; los CRUDs del admin llaman `revalidatePath` para efecto inmediato.
 
 ---
 

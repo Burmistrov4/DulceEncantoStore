@@ -3,8 +3,8 @@ import { getSiteContent } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminContenidoPage() {
-  const content = getSiteContent();
+export default async function AdminContenidoPage() {
+  const content = await getSiteContent();
 
   return (
     <div>

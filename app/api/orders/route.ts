@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     .filter((i) => i.productId && Number.isFinite(i.qty) && i.qty > 0);
 
   try {
-    const order = createOrder({ customerName, customerPhone, zoneId, payment, items });
+    const order = await createOrder({ customerName, customerPhone, zoneId, payment, items });
     return NextResponse.json({ ok: true, code: order.code, totalUsd: order.totalUsd, rate: order.rate });
   } catch (e) {
     return NextResponse.json(
@@ -51,6 +51,6 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const codes = (url.searchParams.get("codes") ?? "").split(",");
-  const orders = getOrdersByCodes(codes);
+  const orders = await getOrdersByCodes(codes);
   return NextResponse.json({ orders });
 }

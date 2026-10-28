@@ -58,7 +58,7 @@ export default function SettingsForm({ config }: { config: StoreConfigDTO }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo obtener la tasa");
       setRate(String(json.rate));
-      setStatus({ kind: "ok", text: `✔ Tasa BCV actualizada desde ${json.source}: ${rateFmt(json.rate)} Bs/$` });
+      setStatus({ kind: "ok", text: `✔ Tasa Euro BCV actualizada desde ${json.source}: ${rateFmt(json.rate)} Bs/$` });
       router.refresh();
     } catch (e) {
       setStatus({ kind: "err", text: e instanceof Error ? e.message : "Error al consultar la tasa" });
@@ -71,7 +71,7 @@ export default function SettingsForm({ config }: { config: StoreConfigDTO }) {
     <div className="space-y-8">
       {/* Tasa del día */}
       <section className="rounded-3xl bg-white p-6 shadow-card ring-1 ring-choco/5">
-        <h2 className="font-display text-xl font-black">💱 Tasa BCV del día</h2>
+        <h2 className="font-display text-xl font-black">💱 Tasa Euro BCV del día</h2>
         <p className="mt-1 text-sm text-choco/60">
           Con esta tasa se calculan todos los precios en bolívares de la tienda.
         </p>

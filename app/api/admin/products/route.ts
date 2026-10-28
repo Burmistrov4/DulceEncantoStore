@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     : [];
 
   try {
-    const product = createProduct({
+    const product = await createProduct({
       name,
       slug: typeof body.slug === "string" ? body.slug : undefined,
       description: String(body.description ?? ""),

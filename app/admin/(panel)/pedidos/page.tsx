@@ -3,8 +3,8 @@ import { getAllOrders } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminOrdersPage() {
-  const orders = getAllOrders();
+export default async function AdminOrdersPage() {
+  const orders = await getAllOrders();
   return (
     <div>
       <h1 className="font-display text-3xl font-black">Pedidos 🧾</h1>

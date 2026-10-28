@@ -1,18 +1,13 @@
-// Actualiza la tasa BCV del día en la base de datos (scraping/consulta automática).
-// Uso: npm run rate:update   (ideal en una tarea programada diaria)
+// Actualiza la Tasa Euro BCV del día en la base de datos (consulta automática).
+// Uso: npm run rate:update   (ideal en una tarea programada diaria, ej. Vercel Cron)
 import { fetchBcvRate } from "../lib/rate";
-import { getDb } from "../db";
+import { setSetting } from "../lib/store";
 
 async function main() {
-  const store = getDb();
   const { rate, source } = await fetchBcvRate();
-  const now = new Date().toISOString();
-  const upsert = store.sqlite.prepare(
-    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
-  );
-  upsert.run("bcv_rate", String(rate));
-  upsert.run("bcv_rate_updated_at", now);
-  console.log(`✔ Tasa BCV actualizada: ${rate.toFixed(2)} Bs/$ (fuente: ${source})`);
+  await setSetting("bcv_rate", String(rate));
+  await setSetting("bcv_rate_updated_at", new Date().toISOString());
+  console.log(`✔ Tasa Euro BCV actualizada: ${rate.toFixed(2)} Bs/€ (fuente: ${source})`);
   console.log("  La tienda muestra los precios en Bs con esta tasa de inmediato (ISR ≤15 s).");
 }
 

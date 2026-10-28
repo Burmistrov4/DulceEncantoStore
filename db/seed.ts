@@ -1,17 +1,17 @@
-// Resetea la base de datos local y la siembra con los productos mock.
-// Uso: npm run db:seed
-import { resetDb, seed, getDb } from "./index";
+// Resetea la base de datos LOCAL (file:) y la siembra con los productos mock.
+// Uso: npm run db:seed   (no funciona contra Turso remoto por seguridad)
+import { resetDb, getDb } from "./index";
 import { SEED_PRODUCTS, DEFAULT_SETTINGS } from "./seed-data";
 
-const store = resetDb();
-const fresh = getDb();
-// resetDb ya crea y siembra si está vacía; si existía, re-sembramos explícitamente
-const count = fresh.sqlite.prepare("SELECT COUNT(*) AS c FROM products").get() as { c: number };
-if (count.c === 0) {
-  seed(store);
+if (process.env.TURSO_DATABASE_URL && !process.env.LIBSQL_URL) {
+  console.error("✖ db:seed solo funciona con la base local. Desactiva TURSO_DATABASE_URL temporalmente.");
+  process.exit(1);
 }
 
-const finalCount = fresh.sqlite.prepare("SELECT COUNT(*) AS c FROM products").get() as { c: number };
-const settingsCount = fresh.sqlite.prepare("SELECT COUNT(*) AS c FROM settings").get() as { c: number };
-console.log(`✔ Base de datos lista: ${finalCount.c} productos (esperados ${SEED_PRODUCTS.length}), ${settingsCount.c} ajustes (esperados ${Object.keys(DEFAULT_SETTINGS).length}).`);
+const store = await resetDb();
+const fresh = await getDb();
+const rs = await fresh.client.execute("SELECT COUNT(*) AS c FROM products");
+const count = Number((rs.rows[0] as unknown as { c: number | bigint }).c);
+console.log(`✔ Base de datos lista: ${count} productos (esperados ${SEED_PRODUCTS.length}).`);
+console.log(`  Ajustes sembrados: ${Object.keys(DEFAULT_SETTINGS).length}.`);
 console.log(`  Archivo: db/dulces.db`);

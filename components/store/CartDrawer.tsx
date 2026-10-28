@@ -351,7 +351,7 @@ export default function CartDrawer() {
                   </span>
                 </div>
                 <p className="mt-2 text-[11px] text-choco/50">
-                  Tasa BCV {rateFmt(config.rate)} Bs/$ · {config.storeName}
+                  Tasa Euro BCV {rateFmt(config.rate)} Bs/$ · {config.storeName}
                 </p>
               </div>
 

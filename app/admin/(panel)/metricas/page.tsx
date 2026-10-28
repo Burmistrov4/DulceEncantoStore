@@ -9,10 +9,10 @@ const TYPE_COLORS: Record<string, { label: string; color: string }> = {
   whatsapp_click: { label: "📲 Clics a WhatsApp", color: "bg-wa" },
 };
 
-export default function AdminMetricsPage() {
-  const { totals } = getMetricsSummary();
-  const daily = getDailyMetrics(14);
-  const top = getTopProducts(8);
+export default async function AdminMetricsPage() {
+  const { totals } = await getMetricsSummary();
+  const daily = await getDailyMetrics(14);
+  const top = await getTopProducts(8);
 
   // Agrupar por día (de más viejo a más reciente)
   const days: { day: string; byType: Record<string, number>; total: number }[] = [];

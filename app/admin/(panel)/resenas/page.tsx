@@ -4,8 +4,8 @@ import type { ModerableReview } from "@/components/admin/ReviewModeration";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminReviewsPage() {
-  const rows = getAllReviews();
+export default async function AdminReviewsPage() {
+  const rows = await getAllReviews();
   const reviews = rows.map((r) => ({
     id: r.id,
     name: r.name,

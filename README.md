@@ -9,7 +9,7 @@ npm install          # solo la primera vez
 npm run dev          # tienda en http://localhost:3000
 ```
 
-La base de datos SQLite (`db/dulces.db`) se crea y se siembra sola con 11 productos de ejemplo la primera vez que arranca. Las imágenes mock se generan con `npm run placeholders` (ya incluidas en `public/products/`).
+La base de datos libSQL (`db/dulces.db` local; Turso en producción) se crea y se siembra sola con 11 productos de ejemplo la primera vez que arranca. Las imágenes mock se generan con `npm run placeholders` (ya incluidas en `public/products/`).
 
 ## 🔑 Accesos y configuración inicial
 
@@ -68,7 +68,7 @@ node scripts/diagnose-carousel.mjs [url]
 ## 🏗️ Arquitectura
 
 - **Next.js 15 (App Router) + TypeScript + Tailwind CSS v4**
-- **SQLite + Drizzle ORM** (`db/dulces.db`) — cero configuración externa. Las tablas se crean automáticamente al arrancar.
+- **libSQL + Drizzle ORM** — local: `db/dulces.db` (cero configuración). Producción: base Turso remota con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`. Las tablas se crean automáticamente al arrancar.
 - **Imágenes locales** en `public/products` (mock) y `public/uploads` (fotos reales subidas desde el admin, comprimidas a `.webp` en el navegador).
 - **SEO**: SSR/ISR (revalidación ≤15 s), Schema.org `Bakery` + `Product` con precio USD y VES, OpenGraph dinámico por producto, `sitemap.xml` y `robots.txt`.
 - **Auth del admin**: cookie firmada con HMAC-SHA256, protegida por middleware edge (`/admin` y `/api/admin`).
@@ -86,7 +86,7 @@ docs/           → GUIA_INSTAGRAM.md (ManyChat, copys, calendario)
 
 ## 🚀 Despliegue
 
-SQLite vive en disco: despliega en un servidor con almacenamiento persistente (VPS con `npm run build && npm run start` detrás de Nginx, Railway, Render…). **No uses Vercel/serverless** para producción (no persiste archivos y `better-sqlite3` requiere Node). Si más adelante necesitas multi-instancia, migra a Supabase cambiando la capa `db/` (el esquema Drizzle es portable a Postgres).
+SQLite vive en disco: despliega en un servidor con almacenamiento persistente (VPS con `npm run build && npm run start` detrás de Nginx, Railway, Render…). **No uses Vercel/serverless** para producción (no persiste archivos y `@libsql/client (libSQL/Turso)` requiere Node). Si más adelante necesitas multi-instancia, migra a Supabase cambiando la capa `db/` (el esquema Drizzle es portable a Postgres).
 
 Recuerda en producción:
 1. `NEXT_PUBLIC_SITE_URL` con tu dominio real (OG, sitemap y JSON-LD lo usan).

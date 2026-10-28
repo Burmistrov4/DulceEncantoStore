@@ -31,7 +31,7 @@ export function buildOrderMessage(opts: {
     `*Subtotal:* ${usd(subtotal)}`,
     `*Entrega:* ${zone ? zone.name : "Por definir"}${fee ? ` (${usd(fee)})` : " (sin costo)"}`,
     `*Total: ${usd(total)} · ${bs(total, config.rate)}*`,
-    `_Tasa BCV: ${rateFmt(config.rate)} Bs/$_`,
+    `_Tasa Euro BCV: ${rateFmt(config.rate)} Bs/$_`,
     ``,
     `*Forma de pago:* ${payment}`,
     ``,

@@ -15,6 +15,7 @@ import StoreProvider from "@/components/StoreProvider";
 import CartBar from "@/components/store/CartBar";
 import CartDrawer from "@/components/store/CartDrawer";
 import CursorFX from "@/components/store/CursorFX";
+import Firefly from "@/components/store/Firefly";
 import Reveal from "@/components/store/Reveal";
 import TrackView from "@/components/store/TrackView";
 import WhatsAppFloat from "@/components/store/WhatsAppFloat";
@@ -51,9 +52,9 @@ function pickCarouselProducts(products: ProductDTO[], onlyAvailable: boolean): P
 }
 
 export default async function Home() {
-  const products = getProducts({ onlyActive: true });
-  const config = getStoreConfig();
-  const content = getSiteContent();
+  const products = await getProducts({ onlyActive: true });
+  const config = await getStoreConfig();
+  const content = await getSiteContent();
   const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   const waHeroHref = waLink(
@@ -67,7 +68,7 @@ export default async function Home() {
 
   // Reseñas: las aprobadas por el dueño; si todavía no hay ninguna, se muestran
   // las del contenido editable como respaldo (la sección nunca se ve vacía).
-  const approvedReviews = getApprovedReviews(6);
+  const approvedReviews = await getApprovedReviews(6);
   const seedReviews = content.testimonials.reviews.map((r, i) => ({
     id: `seed-${i}`,
     name: r.name,
@@ -83,7 +84,7 @@ export default async function Home() {
     "@type": "Bakery",
     name: config.storeName,
     description:
-      "Postres artesanales recién hechos con leche 100% fresca y sin conservantes en Valencia, Carabobo: yogur griego, quesillo tradicional y torta de pan. Pedidos por WhatsApp.",
+      "Postres artesanales recién hechos con ingredientes 100% reales y cero conservantes en Valencia, Carabobo: yogur griego, quesillo tradicional y torta de pan. Pedidos por WhatsApp.",
     image: `${site}/opengraph-image`,
     telephone: `+${config.whatsappNumber.replace(/\D/g, "")}`,
     priceRange: "$2 - $15",
@@ -121,7 +122,7 @@ export default async function Home() {
       {content.urgency.enabled && (
         <UrgencyBar text={content.urgency.overrideText.trim() || buildUrgencyText(products)} />
       )}
-      <Header storeName={config.storeName} />
+      <Header storeName={config.storeName} rate={config.rate} />
       <main>
         <Hero content={content.hero} waHref={waHeroHref} />
         <Marquee items={content.marquee.items} />
@@ -155,6 +156,7 @@ export default async function Home() {
       <CartBar />
       <CartDrawer />
       <CursorFX fx={content.fx} />
+      {content.fx.enabled && <Firefly />}
       <WhatsAppFloat />
     </StoreProvider>
   );

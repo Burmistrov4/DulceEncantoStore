@@ -16,15 +16,15 @@ import { CATEGORIES } from "@/lib/types";
 export const revalidate = 15;
 
 export async function generateStaticParams() {
-  return getProducts({ onlyActive: true }).map((p) => ({ slug: p.slug }));
+  return (await getProducts({ onlyActive: true })).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) return { title: "Producto no encontrado" };
 
-  const config = getStoreConfig();
+  const config = await getStoreConfig();
   const minPrice = Math.min(product.priceUsd, ...product.variants.map((v) => v.priceUsd));
   const title = `${product.name} — ${usd(minPrice)} · ${bs(minPrice, config.rate)}`;
   const description = `${product.description} Pide hoy por WhatsApp con retiro en Flor Amarillo o delivery en Valencia, Carabobo.`;
@@ -51,11 +51,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product || !product.active) notFound();
 
-  const config = getStoreConfig();
-  const content = getSiteContent();
+  const config = await getStoreConfig();
+  const content = await getSiteContent();
   const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const category = CATEGORIES.find((c) => c.id === product.category);
   const minPrice = Math.min(product.priceUsd, ...product.variants.map((v) => v.priceUsd));
@@ -84,7 +84,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   return (
     <StoreProvider config={config}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <Header storeName={config.storeName} />
+      <Header storeName={config.storeName} rate={config.rate} />
 
       <main className="mx-auto max-w-6xl px-4 pb-20 pt-8">
         <Link href="/#menu" className="text-sm font-bold text-caramel hover:underline">

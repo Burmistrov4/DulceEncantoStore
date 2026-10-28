@@ -47,10 +47,33 @@
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
   }
+  /* Balanceo encantador de las fotos del Hero: rota levemente y respira */
+  @keyframes hero-sway {
+    0%, 100% { transform: rotate(2deg) translateY(0); }
+    50% { transform: rotate(2.6deg) translateY(-8px); }
+  }
+  @keyframes hero-sway-delayed {
+    0%, 100% { transform: rotate(-7deg) translateY(0); }
+    50% { transform: rotate(-5.2deg) translateY(-6px); }
+  }
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Fotos del Hero: balanceo suave y perpetuo (se desactiva con reduced-motion) */
+.hero-photo-sway {
+  animation: hero-sway 9s ease-in-out infinite;
+}
+.hero-photo-sway-delayed {
+  animation: hero-sway-delayed 7s 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-photo-sway,
+  .hero-photo-sway-delayed {
+    animation: none;
+  }
 }
 
 body {

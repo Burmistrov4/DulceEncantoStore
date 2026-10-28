@@ -1,11 +1,18 @@
-import fs from "node:fs";
-import path from "node:path";
-import Database from "better-sqlite3";
-import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+// ─────────────────────────────────────────────────────────────────────────────
+// Capa de base de datos (libSQL / Turso)
+//
+// En desarrollo (y despliegues con disco) usa un archivo SQLite local:
+//   LIBSQL_URL=file:./db/dulces.db
+// En producción (Vercel) usa una base Turso remota:
+//   TURSO_DATABASE_URL=libsql://tu-db.turso.io
+//   TURSO_AUTH_TOKEN=eyJ...
+// El dialecto Drizzle (sqlite-core) y el esquema son idénticos en ambos casos.
+// Todas las operaciones son async (el driver habla HTTP con Turso).
+// ─────────────────────────────────────────────────────────────────────────────
+import { createClient, type Client, type InStatement } from "@libsql/client";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 import { SEED_PRODUCTS, DEFAULT_SETTINGS } from "./seed-data";
-
-const DB_PATH = path.join(process.cwd(), "db", "dulces.db");
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS products (
@@ -69,95 +76,111 @@ CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
 `;
 
 export type DbStore = {
-  db: BetterSQLite3Database<typeof schema>;
-  sqlite: Database.Database;
+  db: LibSQLDatabase<typeof schema>;
+  client: Client;
 };
 
-// Migraciones incrementales para bases creadas con versiones anteriores.
-function migrate(sqlite: Database.Database) {
-  const cols = sqlite.prepare("PRAGMA table_info(products)").all() as { name: string }[];
-  const has = (name: string) => cols.some((c) => c.name === name);
-  if (!has("featured")) {
-    sqlite.exec("ALTER TABLE products ADD COLUMN featured INTEGER NOT NULL DEFAULT 0");
-    // Sembramos algunos destacados para que el carrusel tenga demo en bases existentes
-    sqlite.exec(
-      `UPDATE products SET featured = 1 WHERE id IN ('yogur-fresa','quesillo-bandeja','combo-familiar')`
+// Ejecuta una sentencia cruda y devuelve filas como objetos.
+export async function queryAll<T = Record<string, unknown>>(stmt: InStatement): Promise<T[]> {
+  const { client } = await getDb();
+  const rs = await client.execute(stmt);
+  return rs.rows as unknown as T[];
+}
+
+// Número de filas afectadas, portable entre el driver viejo (changes) y libSQL.
+export function affected(res: unknown): number {
+  const r = res as { rowsAffected?: number | bigint; changes?: number | bigint } | undefined;
+  return Number(r?.rowsAffected ?? r?.changes ?? 0);
+}
+
+async function ensureSchema(client: Client) {
+  // DDL idempotente: funciona igual en archivo local y en Turso remoto
+  const stmts = DDL.split(";")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((sql) => ({ sql, args: [] as never[] }));
+  await client.batch(stmts, "write");
+  // Migración incremental: columna featured (bases creadas con versiones antiguas)
+  try {
+    await client.execute("SELECT featured FROM products LIMIT 1");
+  } catch {
+    await client.execute("ALTER TABLE products ADD COLUMN featured INTEGER NOT NULL DEFAULT 0");
+    await client.execute(
+      `UPDATE products SET featured = 1 WHERE id IN ('yogur-fresa','quesillo-bandeja','combo-familiar')`,
     );
   }
 }
 
-function seedIfEmpty(store: DbStore) {
-  const row = store.sqlite.prepare("SELECT COUNT(*) AS c FROM products").get() as { c: number };
-  if (row.c > 0) return;
-  seed(store);
-}
-
-export function seed(store: DbStore) {
+async function seedIfEmpty(store: DbStore) {
+  const rs = await store.client.execute("SELECT COUNT(*) AS c FROM products");
+  const c = Number((rs.rows[0] as unknown as { c: number | bigint } | undefined)?.c ?? 0);
+  if (c > 0) return;
   const now = Math.floor(Date.now() / 1000);
-  const insertProduct = store.sqlite.prepare(
-    `INSERT OR IGNORE INTO products
-     (id, slug, name, description, category, price_usd, variants, image, servings, ingredients, active, available_today, featured, stock, sort_order, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?)`
-  );
-  const insertSetting = store.sqlite.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
-  const tx = store.sqlite.transaction(() => {
-    for (const p of SEED_PRODUCTS) {
-      insertProduct.run(
-        p.id,
-        p.slug,
-        p.name,
-        p.description,
-        p.category,
-        p.priceUsd,
-        JSON.stringify(p.variants),
-        p.image,
-        p.servings,
-        p.ingredients,
-        p.featured ? 1 : 0,
-        p.stock,
-        p.sortOrder,
-        now
-      );
-    }
-    for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) insertSetting.run(key, value);
-  });
-  tx();
+  const stmts: InStatement[] = [];
+  for (const p of SEED_PRODUCTS) {
+    stmts.push({
+      sql: `INSERT OR IGNORE INTO products
+        (id, slug, name, description, category, price_usd, variants, image, servings, ingredients, active, available_today, featured, stock, sort_order, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, ?)`,
+      args: [
+        p.id, p.slug, p.name, p.description, p.category, p.priceUsd,
+        JSON.stringify(p.variants), p.image, p.servings, p.ingredients,
+        p.featured ? 1 : 0, p.stock, p.sortOrder, now,
+      ],
+    });
+  }
+  for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+    stmts.push({ sql: "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", args: [key, value] });
+  }
+  await store.client.batch(stmts, "write");
 }
 
-function initDb(): DbStore {
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const sqlite = new Database(DB_PATH);
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.exec(DDL);
-  migrate(sqlite);
-  const store: DbStore = { db: drizzle(sqlite, { schema }), sqlite };
-  seedIfEmpty(store);
+function resolveConnection(): { url: string; authToken?: string } {
+  const url = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "file:./db/dulces.db";
+  const authToken = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN || undefined;
+  return { url, authToken };
+}
+
+async function initDb(): Promise<DbStore> {
+  const { url, authToken } = resolveConnection();
+  const client = createClient({ url, authToken });
+  await ensureSchema(client);
+  const store: DbStore = { db: drizzle(client, { schema }), client };
+  await seedIfEmpty(store);
   return store;
 }
 
-// Singleton a nivel de proceso: sobrevive al hot-reload de Next en desarrollo
-const g = globalThis as unknown as { __dulcesDb?: DbStore };
+// Singleton a nivel de proceso (sobrevive al hot-reload de Next en desarrollo).
+// Las funciones de lib/store.ts lo esperan con `await getDb()`.
+const g = globalThis as unknown as { __dulcesDb?: DbStore; __dulcesDbPromise?: Promise<DbStore> };
 
-export function getDb(): DbStore {
-  if (!g.__dulcesDb) g.__dulcesDb = initDb();
-  return g.__dulcesDb;
+export function getDb(): Promise<DbStore> {
+  if (g.__dulcesDb) return Promise.resolve(g.__dulcesDb);
+  if (!g.__dulcesDbPromise) {
+    g.__dulcesDbPromise = initDb().then((store) => {
+      g.__dulcesDb = store;
+      return store;
+    });
+  }
+  return g.__dulcesDbPromise;
 }
 
-export function resetDb(): DbStore {
-  if (g.__dulcesDb) {
-    try {
-      g.__dulcesDb.sqlite.close();
-    } catch {
-      /* ignore */
-    }
-    g.__dulcesDb = undefined;
+// Alias explícito para scripts y arranques
+export const getDbReady = getDb;
+
+// Solo para uso en desarrollo (npm run db:seed): borra la BD local y la re-crea.
+export function resetDb(): Promise<DbStore> {
+  const fs = require("node:fs") as typeof import("node:fs");
+  try { g.__dulcesDb?.client.close(); } catch { /* ignore */ }
+  g.__dulcesDb = undefined;
+  g.__dulcesDbPromise = undefined;
+  const file = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL || "file:./db/dulces.db";
+  if (!file.startsWith("file:")) {
+    throw new Error("resetDb solo se puede usar con una base local (file:).");
   }
+  const dbPath = file.slice("file:".length) || "./db/dulces.db";
   for (const suffix of ["", "-wal", "-shm"]) {
-    try {
-      fs.rmSync(DB_PATH + suffix, { force: true });
-    } catch {
-      /* ignore */
-    }
+    try { fs.rmSync(dbPath + suffix, { force: true }); } catch { /* ignore */ }
   }
   return getDb();
 }

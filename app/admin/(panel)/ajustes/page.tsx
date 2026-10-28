@@ -3,8 +3,8 @@ import { getStoreConfig } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminSettingsPage() {
-  const config = getStoreConfig();
+export default async function AdminSettingsPage() {
+  const config = await getStoreConfig();
   return (
     <div>
       <h1 className="font-display text-3xl font-black">Ajustes ⚙️</h1>

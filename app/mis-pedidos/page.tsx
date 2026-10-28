@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Rastrea tus pedidos con tu código. Sin cuentas ni claves.",
 };
 
-export default function MisPedidosPage() {
-  const config = getStoreConfig();
+export default async function MisPedidosPage() {
+  const config = await getStoreConfig();
   return <MisPedidosClient whatsappNumber={config.whatsappNumber} />;
 }

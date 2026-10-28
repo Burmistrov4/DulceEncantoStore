@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function BioPage() {
-  const config = getStoreConfig();
+export default async function BioPage() {
+  const config = await getStoreConfig();
   const waHref = waLink(
     config.whatsappNumber,
     `¡Hola ${config.storeName}! 👋 Vengo de Instagram y quiero hacer un pedido.`

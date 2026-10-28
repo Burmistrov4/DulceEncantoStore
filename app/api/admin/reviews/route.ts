@@ -7,7 +7,7 @@ const VALID_STATUS = new Set(["pending", "approved", "rejected"]);
 // Moderación de reseñas: aprobar (publicar en la landing), rechazar u ocultar
 // (volver a pendiente) y eliminar para siempre.
 export async function GET() {
-  return NextResponse.json({ reviews: getAllReviews() });
+  return NextResponse.json({ reviews: await getAllReviews() });
 }
 
 export async function PATCH(req: Request) {
@@ -17,7 +17,7 @@ export async function PATCH(req: Request) {
   if (!Number.isInteger(id) || !VALID_STATUS.has(status)) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
-  const ok = setReviewStatus(id, status as "pending" | "approved" | "rejected");
+  const ok = await setReviewStatus(id, status as "pending" | "approved" | "rejected");
   if (!ok) return NextResponse.json({ error: "Reseña no encontrada" }, { status: 404 });
   revalidatePath("/", "layout");
   return NextResponse.json({ ok: true });
@@ -29,7 +29,7 @@ export async function DELETE(req: Request) {
   if (!Number.isInteger(id)) {
     return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
-  const ok = deleteReview(id);
+  const ok = await deleteReview(id);
   if (!ok) return NextResponse.json({ error: "Reseña no encontrada" }, { status: 404 });
   revalidatePath("/", "layout");
   return NextResponse.json({ ok: true });

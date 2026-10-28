@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { HeroContent } from "@/lib/site-content";
 import WhatsAppIcon from "../WhatsAppIcon";
+import SmoothLink from "./SmoothLink";
 
 export default function Hero({ content, waHref }: { content: HeroContent; waHref: string }) {
   return (
@@ -60,15 +61,15 @@ export default function Hero({ content, waHref }: { content: HeroContent; waHref
           </p>
 
           <div className="mt-9 flex animate-rise-2 flex-wrap items-center gap-3.5">
-            <a
-              href="#menu"
+            <SmoothLink
+              id="menu"
               className="group flex items-center gap-2.5 rounded-full bg-caramel px-8 py-4 font-display text-lg font-bold text-cream shadow-pop transition hover:-translate-y-0.5 hover:bg-caramel-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-caramel focus-visible:ring-offset-2"
             >
               {content.primaryCta}
               <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
                 →
               </span>
-            </a>
+            </SmoothLink>
             <a
               href={waHref}
               target="_blank"
@@ -97,7 +98,7 @@ export default function Hero({ content, waHref }: { content: HeroContent; waHref
 
         {/* Composición de fotos: principal rotada + secundaria superpuesta + sticker flotante */}
         <div className="relative mx-auto w-full max-w-md animate-rise-2 lg:max-w-none">
-          <div className="relative rotate-2 overflow-hidden rounded-[2.25rem] border-8 border-white shadow-pop">
+          <div className="hero-photo-sway relative rotate-2 overflow-hidden rounded-[2.25rem] border-8 border-white shadow-pop transition duration-500 hover:scale-[1.02] hover:rotate-0">
             <Image
               src={content.photos.main.src}
               alt={content.photos.main.alt}
@@ -108,7 +109,7 @@ export default function Hero({ content, waHref }: { content: HeroContent; waHref
               sizes="(max-width: 1024px) 90vw, 45vw"
             />
           </div>
-          <div className="absolute -bottom-10 -left-3 w-36 rotate-[-7deg] overflow-hidden rounded-2xl border-4 border-white shadow-card sm:-left-10 sm:w-48">
+          <div className="hero-photo-sway-delayed absolute -bottom-10 -left-3 w-36 rotate-[-7deg] overflow-hidden rounded-2xl border-4 border-white shadow-card sm:-left-10 sm:w-48">
             <Image
               src={content.photos.secondary.src}
               alt={content.photos.secondary.alt}

@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getSiteContent, saveSiteContent } from "@/lib/store";
-import { DEFAULT_SITE_CONTENT } from "@/lib/site-content";
+import { DEFAULT_SITE_CONTENT, type SiteContent } from "@/lib/site-content";
 
 // Guarda el contenido editable de la landing. El editor manda las secciones completas
 // que modificó (claves de primer nivel de SiteContent); las demás quedan intactas.
@@ -19,12 +19,12 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Nada que guardar" }, { status: 400 });
   }
 
-  saveSiteContent(patch as Partial<ReturnType<typeof getSiteContent>>);
+  const saved = await saveSiteContent(patch as Partial<SiteContent>);
   // Reflejar los cambios al instante en toda la tienda (sin esperar el ISR de 15 s)
   revalidatePath("/", "layout");
-  return NextResponse.json({ ok: true, content: getSiteContent() });
+  return NextResponse.json({ ok: true, content: saved });
 }
 
 export async function GET() {
-  return NextResponse.json({ content: getSiteContent() });
+  return NextResponse.json({ content: await getSiteContent() });
 }

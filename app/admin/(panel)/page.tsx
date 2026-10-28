@@ -19,12 +19,12 @@ function MetricCard({ emoji, label, value, note }: { emoji: string; label: strin
   );
 }
 
-export default function AdminDashboard() {
-  const { totals, last7 } = getMetricsSummary();
-  const products = getProducts();
-  const config = getStoreConfig();
-  const top = getTopProducts(5);
-  const ordersSummary = getOrdersSummary();
+export default async function AdminDashboard() {
+  const { totals, last7 } = await getMetricsSummary();
+  const products = await getProducts();
+  const config = await getStoreConfig();
+  const top = await getTopProducts(5);
+  const ordersSummary = await getOrdersSummary();
 
   return (
     <div>

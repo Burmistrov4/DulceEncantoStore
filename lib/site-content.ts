@@ -140,15 +140,15 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   },
   hero: {
     eyebrow: "Postres artesanales · Valencia, Carabobo",
-    titleTop: "Recién hechos, con",
-    titleHighlight: "leche 100% fresca",
-    titleBottom: "y sin conservantes.",
+    titleTop: "Recién hechos,",
+    titleHighlight: "con ingredientes 100% reales",
+    titleBottom: "y cero conservantes.",
     subtitle:
       "Yogur griego con mermelada casera, quesillo tradicional y torta de pan horneada esta mañana. Pide hoy por WhatsApp: retíralo en el taller o te lo llevamos hasta tu puerta. 🧡",
     primaryCta: "Ver menú de hoy",
     secondaryCta: "Pedir por WhatsApp",
     sticker: "¡Horneado hoy! ✨",
-    badges: ["Sin conservantes", "Leche fresca de la zona", "Horneado cada mañana", "Taller en Flor Amarillo"],
+    badges: ["Sin conservantes", "Sabor casero de verdad", "Horneado cada mañana", "Taller en Flor Amarillo"],
     photos: {
       main: { src: "/products/quesillo-bandeja.webp", alt: "Quesillo artesanal recién hecho con caramelo" },
       secondary: { src: "/products/yogur-fresa.webp", alt: "Yogur griego artesanal de fresa" },
@@ -156,7 +156,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   },
   marquee: {
     items: [
-      "🥛 Leche 100% fresca",
+      "🥛 Ingredientes 100% reales",
       "🧁 Horneado cada mañana",
       "🚚 Delivery en Valencia",
       "❄️ Sin conservantes",
@@ -194,8 +194,8 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     features: [
       {
         emoji: "🥛",
-        title: "Leche 100% fresca de la zona",
-        text: "Compramos leche fresca a productores de Carabobo. Nada de polvos ni sustitutos.",
+        title: "Ingredientes de primera, sin atajos",
+        text: "Lácteos seleccionados y fruta fresca de Carabobo en cada receta. Nada artificial, nada de sustitutos: lo que pruebas es 100% real y se nota desde el primer bocado.",
       },
       {
         emoji: "🧑‍🍳",
@@ -227,7 +227,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
     eyebrow: "Menú de hoy",
     title: "Elige tu antojo 🤤",
     subtitle:
-      "Precios en dólares y bolívares a la tasa BCV del día. Todo se prepara por lotes pequeños: si aparece “Agotado hoy”, vuelve mañana temprano. 😉",
+      "Precios en dólares y bolívares a la Tasa Euro BCV del día. Todo se prepara por lotes pequeños: si aparece “Agotado hoy”, vuelve mañana temprano. 😉",
   },
   customOrders: {
     enabled: true,
@@ -239,7 +239,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   testimonials: {
     eyebrow: "Valencianos felices",
     title: "Lo que dicen quienes ya probaron",
-    badges: ["🧑‍🍳 100% Artesanal y Seguro", "🥛 Leche fresca local", "⭐ 4,9/5 en pedidos entregados"],
+    badges: ["🧑‍🍳 100% Artesanal y Seguro", "🥛 Ingredientes 100% reales", "⭐ 4,9/5 en pedidos entregados"],
     reviews: [
       {
         name: "María González",
@@ -287,7 +287,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
       },
       {
         q: "¿Cómo puedo pagar?",
-        a: "PagoMóvil, efectivo en dólares, Binance Pay o Zelle. Los montos en bolívares se calculan con la tasa BCV del día, mostrada en toda la tienda.",
+        a: "PagoMóvil, efectivo en dólares, Binance Pay o Zelle. Los montos en bolívares se calculan con la Tasa Euro BCV del día, mostrada en toda la tienda.",
       },
       {
         q: "¿Todo es del día?",
@@ -305,7 +305,7 @@ export const DEFAULT_SITE_CONTENT: SiteContent = {
   },
   footer: {
     about:
-      "Postres artesanales hechos cada mañana con leche 100% fresca y sin conservantes. De nuestra nevera a tu antojo. 🧡",
+      "Postres artesanales hechos cada mañana con ingredientes 100% reales y cero conservantes. De nuestra nevera a tu antojo. 🧡",
     address: "Flor Amarillo, Valencia — Carabobo, Venezuela",
     hours: "Lunes a Sábado · 8:00 am – 6:00 pm",
   },

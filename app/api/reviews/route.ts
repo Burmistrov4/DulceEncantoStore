@@ -28,6 +28,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Calificación inválida" }, { status: 400 });
   }
 
-  createReview({ name, zone, text, stars });
+  await createReview({ name, zone, text, stars });
   return NextResponse.json({ ok: true });
 }

@@ -48,10 +48,26 @@ export async function POST(req: Request) {
     }
   }
 
+  // Sin Blob configurado en producción: el filesystem de Vercel es de solo lectura.
+  // Devolvemos un error claro en vez de un 500 confuso.
+  if (process.env.VERCEL) {
+    return NextResponse.json(
+      { error: "Falta conectar Vercel Blob. Ve a tu proyecto en Vercel → Storage → Create Database → Blob → Connect. Luego Redeploy." },
+      { status: 503 },
+    );
+  }
+
   // Modo local (desarrollo): public/uploads
   const name = `${nanoid(12)}.${ext}`;
   const dir = path.join(process.cwd(), "public", "uploads");
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, name), bytes);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, name), bytes);
+  } catch (e) {
+    return NextResponse.json(
+      { error: `No se pudo guardar la imagen localmente: ${e instanceof Error ? e.message : "error de disco"}` },
+      { status: 500 },
+    );
+  }
   return NextResponse.json({ path: `/uploads/${name}`, storage: "local" });
 }

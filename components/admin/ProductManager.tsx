@@ -278,7 +278,7 @@ export default function ProductManager({ products }: { products: ProductDTO[] })
                     {form.variants.map((v, i) => (
                       <div key={i} className="flex gap-2">
                         <input
-                          className="field flex-1"
+                          className="field min-w-0 flex-1"
                           value={v.label}
                           onChange={(e) => {
                             const next = [...form.variants];
@@ -288,7 +288,7 @@ export default function ProductManager({ products }: { products: ProductDTO[] })
                           placeholder="200g / 500g / 1 Litro…"
                         />
                         <input
-                          className="field w-28"
+                          className="field w-28! shrink-0"
                           inputMode="decimal"
                           value={v.priceUsd}
                           onChange={(e) => {

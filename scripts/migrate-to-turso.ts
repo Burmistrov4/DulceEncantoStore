@@ -24,8 +24,7 @@ if (!fs.existsSync(localPath)) {
 const local = createClient({ url: `file:${localPath}` });
 const remote = createClient({ url, authToken: token });
 
-// Asegura el esquema remoto
-const ddl = fs.readFileSync(path.join(process.cwd(), "db", "index.ts"), "utf8"); // no: usamos arranque de la app
+// Asegura el esquema remoto (idempotente; la app también lo hace al arrancar)
 console.log("→ Creando esquema remoto (lo hará la app al arrancar también, esto es idempotente)…");
 await remote.execute(`CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',

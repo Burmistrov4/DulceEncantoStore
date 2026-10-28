@@ -79,7 +79,7 @@ export default function SettingsForm({ config }: { config: StoreConfigDTO }) {
           <div>
             <label className="text-xs font-black uppercase tracking-wider text-choco/60">Bs por USD</label>
             <input
-              className="field mt-1.5 w-40"
+              className="field mt-1.5 w-40!"
               inputMode="decimal"
               value={rate}
               onChange={(e) => setRate(e.target.value)}
@@ -131,7 +131,7 @@ export default function SettingsForm({ config }: { config: StoreConfigDTO }) {
           {zones.map((z, i) => (
             <div key={z.id} className="flex gap-2">
               <input
-                className="field flex-1"
+                className="field min-w-0 flex-1"
                 value={z.name}
                 placeholder="Ej: Delivery · El Viñedo"
                 onChange={(e) => {
@@ -141,7 +141,7 @@ export default function SettingsForm({ config }: { config: StoreConfigDTO }) {
                 }}
               />
               <input
-                className="field w-28"
+                className="field w-28!"
                 inputMode="decimal"
                 value={z.feeUsd}
                 placeholder="$ 1.50"

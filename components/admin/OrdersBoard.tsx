@@ -75,16 +75,18 @@ function OrderCard({ order }: { order: AdminOrder }) {
       </div>
 
       {/* Cliente con acceso directo al chat */}
-      <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-cream/70 px-4 py-2.5">
-        <span className="text-sm font-bold">👤 {order.customerName}</span>
-        <span className="text-xs text-choco/55">📱 {order.customerPhone}</span>
+      <div className="mt-3 flex flex-col gap-2 rounded-xl bg-cream/70 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold">👤 {order.customerName}</p>
+          <p className="truncate text-xs text-choco/55">📱 {order.customerPhone}</p>
+        </div>
         <a
           href={`https://wa.me/${order.customerPhone}?text=${encodeURIComponent(
             `¡Hola ${order.customerName}! Sobre tu pedido ${order.code} de Dulce Encanto 🧡`
           )}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-wa px-3 py-1.5 text-xs font-bold text-white hover:bg-wa-deep"
+          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-wa px-3 py-2 text-xs font-bold text-white hover:bg-wa-deep sm:ml-auto sm:py-1.5"
         >
           Escribir por WhatsApp
         </a>
@@ -111,13 +113,13 @@ function OrderCard({ order }: { order: AdminOrder }) {
         </span>
       </div>
 
-      {/* Pipeline de estados */}
-      <div className="mt-4 flex flex-wrap gap-2">
+      {/* Pipeline de estados: botones a todo el ancho en móvil */}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         {next && (
           <button
             onClick={() => patch(next)}
             disabled={busy}
-            className="rounded-full bg-leaf px-4 py-2 text-sm font-bold text-cream hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-full bg-leaf px-4 py-2.5 text-sm font-bold text-cream hover:opacity-90 disabled:opacity-50 sm:w-auto sm:py-2"
           >
             → Marcar {STATUS_META[next].label.toLowerCase()}
           </button>
@@ -126,7 +128,7 @@ function OrderCard({ order }: { order: AdminOrder }) {
           <button
             onClick={() => patch("cancelado")}
             disabled={busy}
-            className="rounded-full bg-choco/10 px-4 py-2 text-sm font-bold text-choco/70 hover:bg-choco/20 disabled:opacity-50"
+            className="w-full rounded-full bg-choco/10 px-4 py-2.5 text-sm font-bold text-choco/70 hover:bg-choco/20 disabled:opacity-50 sm:w-auto sm:py-2"
           >
             Cancelar pedido
           </button>
@@ -135,7 +137,7 @@ function OrderCard({ order }: { order: AdminOrder }) {
           <button
             onClick={() => patch("nuevo")}
             disabled={busy}
-            className="rounded-full bg-choco/10 px-4 py-2 text-sm font-bold text-choco/70 hover:bg-choco/20 disabled:opacity-50"
+            className="w-full rounded-full bg-choco/10 px-4 py-2.5 text-sm font-bold text-choco/70 hover:bg-choco/20 disabled:opacity-50 sm:w-auto sm:py-2"
           >
             ↩︎ Reactivar
           </button>
@@ -160,26 +162,26 @@ export default function OrdersBoard({ orders }: { orders: AdminOrder[] }) {
 
   return (
     <div>
-      {/* Resumen del día */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-3xl bg-white p-5 shadow-card ring-1 ring-choco/5">
-          <p className="text-xs font-black uppercase tracking-wider text-choco/55">Pedidos hoy</p>
-          <p className="mt-1 font-display text-3xl font-black text-caramel-deep">{today.length}</p>
+      {/* Resumen del día: 3 tarjetas incluso en móvil (una columna sería un desperdicio de scroll) */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="rounded-2xl bg-white p-3 shadow-card ring-1 ring-choco/5 sm:rounded-3xl sm:p-5">
+          <p className="text-[10px] font-black uppercase tracking-wider text-choco/55 sm:text-xs">Pedidos hoy</p>
+          <p className="mt-1 font-display text-xl font-black text-caramel-deep sm:text-3xl">{today.length}</p>
         </div>
-        <div className="rounded-3xl bg-white p-5 shadow-card ring-1 ring-choco/5">
-          <p className="text-xs font-black uppercase tracking-wider text-choco/55">En curso</p>
-          <p className="mt-1 font-display text-3xl font-black text-caramel-deep">{pending.length}</p>
+        <div className="rounded-2xl bg-white p-3 shadow-card ring-1 ring-choco/5 sm:rounded-3xl sm:p-5">
+          <p className="text-[10px] font-black uppercase tracking-wider text-choco/55 sm:text-xs">En curso</p>
+          <p className="mt-1 font-display text-xl font-black text-caramel-deep sm:text-3xl">{pending.length}</p>
         </div>
-        <div className="rounded-3xl bg-white p-5 shadow-card ring-1 ring-choco/5">
-          <p className="text-xs font-black uppercase tracking-wider text-choco/55">Vendido hoy</p>
-          <p className="mt-1 font-display text-3xl font-black text-caramel-deep">
+        <div className="rounded-2xl bg-white p-3 shadow-card ring-1 ring-choco/5 sm:rounded-3xl sm:p-5">
+          <p className="text-[10px] font-black uppercase tracking-wider text-choco/55 sm:text-xs">Vendido hoy</p>
+          <p className="mt-1 font-display text-xl font-black text-caramel-deep sm:text-3xl">
             {usd(today.reduce((sum, o) => sum + o.totalUsd, 0))}
           </p>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="mt-6 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filtrar pedidos">
+      <div className="mt-6 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Filtrar pedidos">
         {FILTERS.map((f) => (
           <button
             key={f.id}
